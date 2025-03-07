@@ -53,8 +53,18 @@ const TaskEditDialog = ({ open, onClose, task, projectId, onTaskUpdated, isProje
 
   // Check if the current user can edit this task
   const canEditTask = useCallback(() => {
+    console.log('Checking edit permissions:', {
+      isNewTask,
+      isProjectOwner,
+      isProjectManager,
+      taskAssignee: task?.assignee?._id,
+      userId: user?._id,
+      taskReporter: task?.reporter?._id
+    });
+
     if (isNewTask) return true; // Anyone can create a new task
-    if (isProjectOwner || isProjectManager) return true; // Owners and managers can edit any task
+    if (isProjectManager) return true; // Managers can edit any task
+    if (isProjectOwner) return true; // Owners can edit any task
     
     // Users can edit tasks they're assigned to or reported
     return task?.assignee?._id === user?._id || task?.reporter?._id === user?._id;
@@ -65,16 +75,14 @@ const TaskEditDialog = ({ open, onClose, task, projectId, onTaskUpdated, isProje
       setLoadingMembers(true);
       console.log('Starting to fetch project members for project:', projectId);
       
-      // Make sure we have a valid projectId
       if (!projectId) {
         console.error('No projectId provided for fetching members');
         setProjectMembers([]);
         return;
       }
       
-      // Get the project details first
       const response = await axios.get(`/api/projects/${projectId}`);
-      console.log('Raw API response:', response.data);
+      console.log('Project data received:', response.data);
       
       if (!response.data) {
         console.error('No project data received');
@@ -90,11 +98,7 @@ const TaskEditDialog = ({ open, onClose, task, projectId, onTaskUpdated, isProje
       
       // Add team members if available
       if (response.data.members && Array.isArray(response.data.members)) {
-        console.log('Raw members data:', response.data.members);
-        
         members = response.data.members.map(member => {
-          console.log('Processing member:', member);
-          // Handle both nested and flat user objects
           const userData = member.user || member;
           return {
             user: {
@@ -105,11 +109,9 @@ const TaskEditDialog = ({ open, onClose, task, projectId, onTaskUpdated, isProje
             role: member.role || 'Member'
           };
         });
-        
-        console.log('Processed members:', members);
       }
       
-      // Remove duplicates if any
+      // Remove duplicates
       members = members.filter((member, index, self) =>
         index === self.findIndex((m) => m.user._id === member.user._id)
       );
@@ -117,16 +119,8 @@ const TaskEditDialog = ({ open, onClose, task, projectId, onTaskUpdated, isProje
       console.log('Final members to display:', members);
       setProjectMembers(members);
 
-      // Show warning if no team members found
-      if (members.length === 0) {
-        console.warn('No team members found in the project');
-      }
     } catch (err) {
-      console.error('Error fetching project members:', {
-        error: err.message,
-        response: err.response?.data,
-        status: err.response?.status
-      });
+      console.error('Error fetching project members:', err);
       setProjectMembers([]);
     } finally {
       setLoadingMembers(false);
@@ -136,10 +130,19 @@ const TaskEditDialog = ({ open, onClose, task, projectId, onTaskUpdated, isProje
   // Fetch project members when the dialog opens
   useEffect(() => {
     if (open && projectId) {
-      console.log('Dialog opened, fetching project members for projectId:', projectId);
       fetchProjectMembers();
+      
+      // Add retry mechanism
+      const retryTimeout = setTimeout(() => {
+        if (projectMembers.length === 0) {
+          console.log('No members found, retrying fetch...');
+          fetchProjectMembers();
+        }
+      }, 1000);
+      
+      return () => clearTimeout(retryTimeout);
     }
-  }, [open, projectId, fetchProjectMembers]);
+  }, [open, projectId, fetchProjectMembers, projectMembers.length]);
 
   useEffect(() => {
     if (open) {
@@ -152,7 +155,7 @@ const TaskEditDialog = ({ open, onClose, task, projectId, onTaskUpdated, isProje
           assignee: task.assignee?._id || '',
           dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '',
           priority: task.priority || 'Medium',
-          status: task.status || 'To-Do',
+          status: ['To-Do', 'In Progress', 'Completed'].includes(task.status) ? task.status : 'To-Do',
         });
       } else {
         // Create new task
@@ -161,7 +164,7 @@ const TaskEditDialog = ({ open, onClose, task, projectId, onTaskUpdated, isProje
           title: '',
           description: '',
           assignee: user?._id || '', // Default to current user
-          dueDate: new Date().toISOString().split('T')[0],
+          dueDate: new Date().toISOString().split('T')[0], // Only set default date for new tasks
           priority: 'Medium',
           status: 'To-Do',
         });
@@ -173,6 +176,7 @@ const TaskEditDialog = ({ open, onClose, task, projectId, onTaskUpdated, isProje
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    console.log('Input change:', { name, value, isProjectManager });
     setFormData(prev => ({
       ...prev,
       [name]: value,
@@ -182,7 +186,6 @@ const TaskEditDialog = ({ open, onClose, task, projectId, onTaskUpdated, isProje
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Check permissions
     if (!canEditTask()) {
       setError('Permission denied: You can only edit your own tasks');
       return;
@@ -195,36 +198,58 @@ const TaskEditDialog = ({ open, onClose, task, projectId, onTaskUpdated, isProje
     try {
       let response;
       
-      // Prepare the task data
+      // Prepare the task data - ensure all fields are in the correct format
       const taskData = {
-        ...formData,
-        projectId: projectId,
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        assignee: formData.assignee || null,
+        dueDate: formData.dueDate ? new Date(formData.dueDate).toISOString() : null,
+        priority: formData.priority || 'Medium',
+        status: ['To-Do', 'In Progress', 'Completed'].includes(formData.status) ? formData.status : 'To-Do',
+        projectId: projectId
       };
+
+      // Remove any undefined or null values except assignee which can be null
+      const cleanTaskData = Object.entries(taskData).reduce((acc, [key, value]) => {
+        if (key === 'assignee' || (value !== null && value !== undefined)) {
+          acc[key] = value;
+        }
+        return acc;
+      }, {});
       
-      console.log('Task data to submit:', taskData);
+      console.log('Submitting task with data:', {
+        taskData: cleanTaskData,
+        isNewTask,
+        taskId: task?._id,
+        permissions: {
+          isProjectManager,
+          isProjectOwner,
+          canEdit: canEditTask()
+        }
+      });
       
       if (isNewTask) {
-        // Create new task
-        console.log('Creating new task with data:', taskData);
-        
-        response = await axios.post('/api/tasks', taskData);
-        setSuccess(true);
-        onTaskUpdated(response.data);
+        response = await axios.post('/api/tasks', cleanTaskData);
+        console.log('Created new task:', response.data);
       } else {
-        // Update existing task - use the same approach as creating
-        console.log('Updating task with ID:', task._id, 'Data:', taskData);
-        
-        response = await axios.patch(`/api/tasks/${task._id}`, taskData);
-        setSuccess(true);
-        onTaskUpdated(response.data);
+        response = await axios.patch(`/api/tasks/${task._id}`, cleanTaskData);
+        console.log('Updated task:', response.data);
       }
       
-      // Close dialog after a short delay to show success message
+      setSuccess(true);
+      onTaskUpdated(response.data);
+      
       setTimeout(() => {
         onClose();
       }, 1000);
     } catch (err) {
-      console.error(`Error ${isNewTask ? 'creating' : 'updating'} task:`, err);
+      console.error('Task operation failed:', {
+        error: err.message,
+        response: err.response?.data,
+        status: err.response?.status,
+        data: err.response?.data
+      });
+      
       const errorMessage = err.response?.data?.message || 
                           `Failed to ${isNewTask ? 'create' : 'update'} task. ${err.message}`;
       setError(errorMessage);
@@ -357,75 +382,34 @@ const TaskEditDialog = ({ open, onClose, task, projectId, onTaskUpdated, isProje
               value={formData.assignee}
               onChange={handleInputChange}
               label="Assignee"
-              disabled={loadingMembers || (!isProjectManager && task?.assignee?._id !== user?._id)}
+              disabled={loadingMembers}
             >
-              {loadingMembers ? (
-                <MenuItem disabled>
+              <MenuItem value="">
+                <em>Unassigned</em>
+              </MenuItem>
+              {projectMembers.map((member) => (
+                <MenuItem 
+                  key={member.user._id} 
+                  value={member.user._id}
+                >
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <CircularProgress size={20} />
-                    Loading team members...
+                    <Avatar sx={{ 
+                      width: 24, 
+                      height: 24, 
+                      bgcolor: member.role === 'Manager' ? 'primary.dark' : 'primary.main' 
+                    }}>
+                      {member.user.name?.charAt(0) || member.user.email?.charAt(0)}
+                    </Avatar>
+                    <Box>
+                      <Typography>{member.user.name || member.user.email}</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {member.role}
+                      </Typography>
+                    </Box>
                   </Box>
                 </MenuItem>
-              ) : projectMembers.length === 0 ? (
-                <MenuItem disabled>
-                  <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                    <Typography>No team members available</Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      Add team members to the project first
-                    </Typography>
-                  </Box>
-                </MenuItem>
-              ) : (
-                <>
-                  {(isProjectManager || !task) && (
-                    <MenuItem value="">
-                      <em>Unassigned</em>
-                    </MenuItem>
-                  )}
-                  {projectMembers.map((member) => {
-                    // If not a manager and editing an existing task,
-                    // only show the current assignee
-                    if (!isProjectManager && task && 
-                        task.assignee?._id !== member.user._id) {
-                      return null;
-                    }
-                    
-                    return (
-                      <MenuItem 
-                        key={member.user._id} 
-                        value={member.user._id}
-                      >
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Avatar sx={{ 
-                            width: 24, 
-                            height: 24, 
-                            bgcolor: member.role === 'Manager' ? 'primary.dark' : 'primary.main' 
-                          }}>
-                            {member.user.name?.charAt(0) || member.user.email?.charAt(0)}
-                          </Avatar>
-                          <Box>
-                            <Typography>{member.user.name || member.user.email}</Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {member.role}
-                            </Typography>
-                          </Box>
-                        </Box>
-                      </MenuItem>
-                    );
-                  })}
-                </>
-              )}
+              ))}
             </Select>
-            {!isProjectManager && task && (
-              <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
-                Only managers can reassign tasks. Contact your project manager to change the assignee.
-              </Typography>
-            )}
-            {projectMembers.length === 0 && !loadingMembers && (
-              <Typography variant="caption" color="error" sx={{ mt: 1 }}>
-                Please add team members to the project before assigning tasks
-              </Typography>
-            )}
           </FormControl>
 
           <TextField
@@ -465,8 +449,7 @@ const TaskEditDialog = ({ open, onClose, task, projectId, onTaskUpdated, isProje
             >
               <MenuItem value="To-Do">To Do</MenuItem>
               <MenuItem value="In Progress">In Progress</MenuItem>
-              <MenuItem value="Review">Review</MenuItem>
-              <MenuItem value="Done">Done</MenuItem>
+              <MenuItem value="Completed">Completed</MenuItem>
             </Select>
           </FormControl>
         </DialogContent>

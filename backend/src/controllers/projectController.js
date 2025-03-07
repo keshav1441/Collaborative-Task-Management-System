@@ -49,13 +49,22 @@ exports.createProject = async (req, res) => {
 // Get all projects for the user
 exports.getProjects = async (req, res) => {
   try {
-    // First get projects where the user is the owner
+    // Get projects where the user is the owner
     const ownedProjects = await Project.find({ owner: req.user._id })
       .populate("owner", "name email")
       .populate("members.user", "name email")
       .populate("tasks", "title status priority");
 
-    // Then find all projects where user has assigned tasks
+    // Get projects where user is a member
+    const memberProjects = await Project.find({
+      'members.user': req.user._id,
+      owner: { $ne: req.user._id } // Exclude already found owned projects
+    })
+      .populate("owner", "name email")
+      .populate("members.user", "name email")
+      .populate("tasks", "title status priority");
+
+    // Then find all projects where user has assigned tasks but is not a member or owner
     const userTasks = await Task.find({
       $or: [
         { assignee: req.user._id },
@@ -66,17 +75,19 @@ exports.getProjects = async (req, res) => {
     // Get those projects
     const taskProjects = await Project.find({ 
       _id: { $in: userTasks },
-      owner: { $ne: req.user._id } // Exclude already found owned projects
+      owner: { $ne: req.user._id },
+      'members.user': { $ne: req.user._id }  // Exclude projects where user is already a member
     })
       .populate("owner", "name email")
       .populate("members.user", "name email")
       .populate("tasks", "title status priority");
 
-    // Combine the two sets of projects
-    const projects = [...ownedProjects, ...taskProjects];
+    // Combine all projects
+    const projects = [...ownedProjects, ...memberProjects, ...taskProjects];
 
     res.json(projects);
   } catch (error) {
+    console.error('Error fetching projects:', error);
     res.status(400).json({ message: error.message });
   }
 };
@@ -90,7 +101,13 @@ exports.getProject = async (req, res) => {
     const project = await Project.findById(req.params.projectId)
       .populate("owner", "name email")
       .populate("members.user", "name email")
-      .populate("tasks");
+      .populate({
+        path: "tasks",
+        populate: [
+          { path: "assignee", select: "name email" },
+          { path: "reporter", select: "name email" }
+        ]
+      });
 
     if (!project) {
       console.log("Project not found");
@@ -106,20 +123,16 @@ exports.getProject = async (req, res) => {
         role: m.role,
       }))
     );
-    console.log(
-      "Is user owner?",
-      project.owner._id.toString() === req.user._id.toString()
-    );
-    console.log("Is user member?", project.isMember(req.user._id));
-    console.log("Is user manager?", project.isManager(req.user._id));
 
-    // Check if user is the owner or has tasks assigned to them in this project
+    // Check if user is owner, member, or has tasks in the project
     const isOwner = project.owner._id.toString() === req.user._id.toString();
-    if (isOwner) {
+    const isMember = project.isMember(req.user._id);
+
+    if (isOwner || isMember) {
       return res.json(project);
     }
 
-    // Check if user has any tasks assigned to them in this project
+    // If not owner or member, check for task assignments
     const userTasks = await Task.find({
       project: project._id,
       $or: [
@@ -128,15 +141,16 @@ exports.getProject = async (req, res) => {
       ]
     });
 
-    if (userTasks.length === 0) {
-      console.log("User does not have any tasks in this project");
-      return res.status(403).json({ 
-        message: "Access denied. You can only access projects where you have assigned tasks." 
-      });
+    if (userTasks.length > 0) {
+      return res.json(project);
     }
 
-    res.json(project);
+    return res.status(403).json({ 
+      message: "Access denied. You must be a project member or have assigned tasks to view this project." 
+    });
+
   } catch (error) {
+    console.error('Error fetching project:', error);
     res.status(400).json({ message: error.message });
   }
 };
@@ -203,8 +217,21 @@ exports.addMember = async (req, res) => {
     project.members.push({ user: userId, role: role || "Member" });
     await project.save();
 
-    res.json(project);
+    // Fetch the updated project with populated fields
+    const updatedProject = await Project.findById(project._id)
+      .populate("owner", "name email")
+      .populate("members.user", "name email")
+      .populate({
+        path: "tasks",
+        populate: [
+          { path: "assignee", select: "name email" },
+          { path: "reporter", select: "name email" }
+        ]
+      });
+
+    res.json(updatedProject);
   } catch (error) {
+    console.error('Error adding member:', error);
     res.status(400).json({ message: error.message });
   }
 };

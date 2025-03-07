@@ -128,35 +128,76 @@ exports.updateTask = async (req, res) => {
       user: req.user._id,
     });
 
-    const task = await Task.findById(req.params.taskId);
+    const task = await Task.findById(req.params.taskId)
+      .populate({
+        path: 'project',
+        populate: {
+          path: 'members.user',
+          select: 'name email'
+        }
+      });
+      
     if (!task) {
       console.log("Task not found:", req.params.taskId);
       return res.status(404).json({ message: "Task not found" });
     }
 
-    // Check if user is assigned to the task or is the reporter
-    if (task.assignee.toString() !== req.user._id.toString() && 
-        task.reporter.toString() !== req.user._id.toString()) {
+    // Check if user is a project manager
+    const isProjectManager = task.project.members.some(member => 
+      member.user._id.toString() === req.user._id.toString() && 
+      (member.role === 'Manager' || task.project.owner.toString() === req.user._id.toString())
+    );
+
+    console.log('Permission check:', {
+      userId: req.user._id,
+      isProjectManager,
+      projectMembers: task.project.members.map(m => ({
+        userId: m.user._id,
+        role: m.role
+      }))
+    });
+
+    // Check permissions
+    const isAssignee = task.assignee?.toString() === req.user._id.toString();
+    const isReporter = task.reporter?.toString() === req.user._id.toString();
+
+    if (!isProjectManager && !isAssignee && !isReporter) {
       console.log("Access denied for user:", req.user._id);
-      return res.status(403).json({ message: "Access denied. You can only update tasks assigned to you or created by you." });
+      return res.status(403).json({ 
+        message: "Access denied. Only project managers, task assignees, or task creators can update tasks." 
+      });
     }
 
-    // Handle status update specifically
-    if (req.body.status !== undefined) {
-      console.log("Processing status update:", req.body.status);
+    // If not a project manager, restrict what can be updated
+    if (!isProjectManager) {
+      // Non-managers can only update status, actualHours, and description
+      const allowedUpdatesForNonManager = ["status", "actualHours", "description"];
+      const attemptedUpdates = Object.keys(req.body);
+      const unauthorizedUpdates = attemptedUpdates.filter(
+        update => !allowedUpdatesForNonManager.includes(update)
+      );
 
-      if (!["To-Do", "In Progress", "Completed"].includes(req.body.status)) {
+      if (unauthorizedUpdates.length > 0) {
+        return res.status(403).json({
+          message: "You don't have permission to update these fields",
+          unauthorizedFields: unauthorizedUpdates,
+          allowedFields: allowedUpdatesForNonManager
+        });
+      }
+    }
+
+    // Handle status update
+    if (req.body.status !== undefined) {
+      if (!["To-Do", "In Progress", "Review", "Done"].includes(req.body.status)) {
         return res.status(400).json({
           message: "Invalid status value",
-          allowedValues: ["To-Do", "In Progress", "Completed"],
+          allowedValues: ["To-Do", "In Progress", "Review", "Done"],
         });
       }
       task.status = req.body.status;
-      console.log("Status updated to:", task.status);
     }
 
     // Handle other updates
-    const updates = Object.keys(req.body).filter((key) => key !== "status");
     const allowedUpdates = [
       "title",
       "description",
@@ -167,44 +208,42 @@ exports.updateTask = async (req, res) => {
       "actualHours",
     ];
 
-    const invalidUpdates = updates.filter(
-      (update) => !allowedUpdates.includes(update)
-    );
-    if (invalidUpdates.length > 0) {
-      console.log("Invalid update fields:", invalidUpdates);
-      return res.status(400).json({
-        message: "Invalid update fields",
-        invalidFields: invalidUpdates,
-        allowedFields: allowedUpdates,
-      });
-    }
-
-    updates.forEach((update) => {
-      task[update] = req.body[update];
+    Object.keys(req.body).forEach((field) => {
+      if (allowedUpdates.includes(field)) {
+        // Special handling for assignee field
+        if (field === 'assignee') {
+          // If assignee is null or empty string, allow it (unassign)
+          if (!req.body.assignee) {
+            task.assignee = null;
+          } else {
+            // Verify the new assignee is a project member
+            const isValidAssignee = task.project.members.some(
+              member => member.user._id.toString() === req.body.assignee
+            );
+            if (!isValidAssignee) {
+              throw new Error('Invalid assignee: must be a project member');
+            }
+            task.assignee = req.body.assignee;
+          }
+        } else {
+          task[field] = req.body[field];
+        }
+      }
     });
 
-    try {
-      await task.save();
-      console.log("Task updated successfully:", task._id);
+    await task.save();
+    console.log("Task updated successfully:", task._id);
 
-      // Return populated task
-      const updatedTask = await Task.findById(task._id)
-        .populate("assignee", "name email")
-        .populate("reporter", "name email")
-        .populate("project", "name");
+    // Return populated task
+    const updatedTask = await Task.findById(task._id)
+      .populate("assignee", "name email")
+      .populate("reporter", "name email")
+      .populate("project", "name");
 
-      res.json(updatedTask);
-    } catch (saveError) {
-      console.error("Error saving task:", saveError);
-      throw new Error(`Failed to save task: ${saveError.message}`);
-    }
+    res.json(updatedTask);
   } catch (error) {
-    console.error("Error updating task:", error);
-    res.status(500).json({
-      message: "Failed to update task",
-      error: error.message,
-      stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
-    });
+    console.error("Error in updateTask:", error);
+    res.status(400).json({ message: error.message });
   }
 };
 

@@ -51,6 +51,7 @@ const ProjectDetail = () => {
   const [error, setError] = useState('')
   const [openEditDialog, setOpenEditDialog] = useState(false)
   const [openReportDialog, setOpenReportDialog] = useState(false)
+  const [isProjectManager, setIsProjectManager] = useState(false)
 
   const fetchProject = useCallback(async () => {
     try {
@@ -60,6 +61,22 @@ const ProjectDetail = () => {
       
       const response = await axios.get(`/api/projects/${projectId}`);
       console.log('Project data received:', response.data);
+      
+      // Check if current user is a manager
+      const currentUserMember = response.data.members?.find(member => 
+        (member.user?._id || member._id) === user?._id
+      );
+      const isManager = response.data.owner === user?._id || 
+                       currentUserMember?.role === 'Manager';
+      
+      console.log('Project role check:', {
+        userId: user?._id,
+        isOwner: response.data.owner === user?._id,
+        memberRole: currentUserMember?.role,
+        isManager
+      });
+      
+      setIsProjectManager(isManager);
       setProject(response.data);
     } catch (err) {
       console.error('Error fetching project:', err.response?.data || err.message);
@@ -236,7 +253,10 @@ const ProjectDetail = () => {
 
         {/* Task Board */}
         <Grid item xs={12}>
-          <TaskBoard projectId={projectId} />
+          <TaskBoard 
+            projectId={projectId} 
+            isProjectManager={isProjectManager}
+          />
         </Grid>
       </Grid>
 
