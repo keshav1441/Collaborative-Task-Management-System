@@ -57,30 +57,61 @@ const TaskEditDialog = ({ open, onClose, task, projectId, onTaskUpdated }) => {
   const fetchProjectMembers = async () => {
     try {
       setLoadingMembers(true);
-      const response = await axios.get(`/api/projects/${projectId}`);
+      console.log('Fetching project details for ID:', projectId);
       
-      // Include the project owner and all members in the list
-      const allMembers = [
-        {
-          _id: response.data.owner._id,
-          name: response.data.owner.name,
-          email: response.data.owner.email,
-          role: 'Manager'
-        },
-        ...response.data.members.map(member => ({
-          _id: member.user._id,
-          name: member.user.name,
-          email: member.user.email,
-          role: member.role
-        }))
-      ];
+      // Get all available users first as a fallback
+      const usersResponse = await axios.get('/api/users/available');
+      console.log('Available users:', usersResponse.data);
+      
+      // Then get project members
+      const projectResponse = await axios.get(`/api/projects/${projectId}`);
+      console.log('Project data:', projectResponse.data);
+      
+      let allMembers = [];
+      
+      // First try to get members from project
+      if (projectResponse.data && projectResponse.data.members) {
+        // Add owner if available
+        if (projectResponse.data.owner && projectResponse.data.owner._id) {
+          allMembers.push({
+            _id: projectResponse.data.owner._id,
+            name: projectResponse.data.owner.name || 'Project Owner',
+            email: projectResponse.data.owner.email || '',
+            role: 'Manager'
+          });
+        }
+        
+        // Add members
+        if (Array.isArray(projectResponse.data.members)) {
+          projectResponse.data.members.forEach(member => {
+            if (member.user && member.user._id) {
+              allMembers.push({
+                _id: member.user._id,
+                name: member.user.name || 'Team Member',
+                email: member.user.email || '',
+                role: member.role || 'Member'
+              });
+            }
+          });
+        }
+      }
+      
+      // If no project members found, use all available users
+      if (allMembers.length === 0 && usersResponse.data && Array.isArray(usersResponse.data)) {
+        allMembers = usersResponse.data.map(user => ({
+          _id: user._id,
+          name: user.name || user.email || 'User',
+          email: user.email || '',
+          role: 'Member'
+        }));
+      }
       
       // Show all project members as potential assignees
+      console.log('Final processed members list:', allMembers);
       setProjectMembers(allMembers);
-      
-      console.log('Available assignees:', allMembers);
     } catch (err) {
       console.error('Error fetching project members:', err);
+      console.error('Error details:', err.response?.data || err.message);
     } finally {
       setLoadingMembers(false);
     }
@@ -280,39 +311,62 @@ const TaskEditDialog = ({ open, onClose, task, projectId, onTaskUpdated }) => {
                 onChange={handleInputChange}
                 label="Assignee"
                 required
-                sx={{ borderRadius: 1 }}
+                sx={{ borderRadius: 2 }}
                 MenuProps={{
                   PaperProps: {
-                    sx: { borderRadius: 1, mt: 0.5 }
+                    sx: { borderRadius: 2, mt: 0.5, boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }
                   }
                 }}
                 renderValue={(selected) => {
                   const member = projectMembers.find(m => m._id === selected);
                   return (
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <Avatar sx={{ width: 24, height: 24, mr: 1, bgcolor: 'primary.main', fontSize: '0.8rem' }}>
+                      <Avatar 
+                        sx={{ 
+                          width: 28, 
+                          height: 28, 
+                          mr: 1.5, 
+                          bgcolor: 'primary.main', 
+                          fontSize: '0.8rem',
+                          fontWeight: 'bold',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                        }}
+                      >
                         {member?.name?.charAt(0) || <PersonIcon fontSize="small" />}
                       </Avatar>
-                      <Typography>{member?.name || 'Select Assignee'}</Typography>
+                      <Typography sx={{ fontWeight: 500 }}>{member?.name || 'Select Assignee'}</Typography>
                     </Box>
                   );
                 }}
               >
                 {loadingMembers ? (
                   <MenuItem disabled>
-                    <CircularProgress size={20} sx={{ mr: 1 }} />
-                    Loading members...
+                    <CircularProgress size={20} sx={{ mr: 1.5 }} />
+                    <Typography>Loading members...</Typography>
                   </MenuItem>
                 ) : projectMembers.length === 0 ? (
-                  <MenuItem disabled>No members available</MenuItem>
+                  <MenuItem disabled>
+                    <Typography color="error">
+                      No members found. Please check project settings.
+                    </Typography>
+                  </MenuItem>
                 ) : (
                   projectMembers.map(member => (
                     <MenuItem key={member._id} value={member._id}>
                       <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Avatar sx={{ width: 24, height: 24, mr: 1, bgcolor: 'primary.main', fontSize: '0.8rem' }}>
+                        <Avatar 
+                          sx={{ 
+                            width: 28, 
+                            height: 28, 
+                            mr: 1.5, 
+                            bgcolor: 'primary.main', 
+                            fontSize: '0.8rem',
+                            fontWeight: 'bold'
+                          }}
+                        >
                           {member.name.charAt(0)}
                         </Avatar>
-                        {member.name}
+                        <Typography sx={{ fontWeight: 500 }}>{member.name}</Typography>
                       </Box>
                     </MenuItem>
                   ))

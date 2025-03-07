@@ -35,8 +35,6 @@ const Layout = () => {
     setMobileOpen(!mobileOpen);
   }
 
-
-
   const handleLogout = () => {
     logout();
     navigate("/login");
@@ -49,27 +47,100 @@ const Layout = () => {
   ];
 
   const drawer = (
-    <div>
-      <Toolbar>
-        <Typography variant="h6" noWrap component="div">
-          Task Manager
+    <Box sx={{
+      height: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+      bgcolor: '#ffffff',
+      background: 'linear-gradient(180deg, rgba(255,255,255,1) 0%, rgba(250,252,255,1) 100%)'
+    }}>
+      <Toolbar sx={{ 
+        px: 2,
+        borderBottom: '1px solid rgba(0,0,0,0.08)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <Typography 
+          variant="h5" 
+          sx={{ 
+            fontWeight: 700, 
+            color: 'primary.main',
+            letterSpacing: '-0.5px',
+            display: 'flex',
+            alignItems: 'center',
+            py: 1
+          }}
+        >
+          <ProjectIcon sx={{ mr: 1.5, fontSize: 28 }} />
+          Task Master
         </Typography>
       </Toolbar>
-      <List>
-        {menuItems.map((item) => (
-          <ListItem button key={item.text} onClick={() => navigate(item.path)}>
-            <ListItemIcon>{item.icon}</ListItemIcon>
-            <ListItemText primary={item.text} />
-          </ListItem>
-        ))}
-        <ListItem button onClick={handleLogout}>
-          <ListItemIcon>
+      <List sx={{ px: 1, py: 2, flexGrow: 1 }}>
+        {menuItems.map((item) => {
+          const isActive = window.location.pathname === item.path;
+          return (
+            <ListItem 
+              button 
+              key={item.text} 
+              onClick={() => navigate(item.path)}
+              sx={{
+                borderRadius: 2,
+                mb: 1,
+                bgcolor: isActive ? 'rgba(58, 123, 213, 0.08)' : 'transparent',
+                color: isActive ? 'primary.main' : 'text.primary',
+                '&:hover': {
+                  bgcolor: isActive ? 'rgba(58, 123, 213, 0.12)' : 'rgba(0, 0, 0, 0.04)',
+                },
+                py: 1.2,
+                px: 1.5
+              }}
+            >
+              <ListItemIcon sx={{ 
+                minWidth: 40,
+                color: isActive ? 'primary.main' : 'text.secondary' 
+              }}>
+                {item.icon}
+              </ListItemIcon>
+              <ListItemText 
+                primary={item.text} 
+                primaryTypographyProps={{ 
+                  fontWeight: isActive ? 600 : 500,
+                  fontSize: '0.95rem'  
+                }}
+              />
+            </ListItem>
+          );
+        })}
+      </List>
+      <Box sx={{ p: 2, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
+        <ListItem 
+          button 
+          onClick={handleLogout}
+          sx={{
+            borderRadius: 2,
+            bgcolor: 'rgba(244, 67, 54, 0.08)',
+            color: 'error.main',
+            '&:hover': {
+              bgcolor: 'rgba(244, 67, 54, 0.12)',
+            },
+            py: 1.2,
+            px: 1.5
+          }}
+        >
+          <ListItemIcon sx={{ minWidth: 40, color: 'error.main' }}>
             <LogoutIcon />
           </ListItemIcon>
-          <ListItemText primary="Logout" />
+          <ListItemText 
+            primary="Logout" 
+            primaryTypographyProps={{ 
+              fontWeight: 600,
+              fontSize: '0.95rem'  
+            }}
+          />
         </ListItem>
-      </List>
-    </div>
+      </Box>
+    </Box>
   );
 
   return (
@@ -80,7 +151,11 @@ const Layout = () => {
         sx={{
           width: { sm: `calc(100% - ${drawerWidth}px)` },
           ml: { sm: `${drawerWidth}px` },
+          bgcolor: 'white',
+          color: 'text.primary',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.08)'
         }}
+        elevation={0}
       >
         <Toolbar>
           <IconButton
@@ -92,7 +167,16 @@ const Layout = () => {
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
+          <Typography 
+            variant="h6" 
+            noWrap 
+            component="div" 
+            sx={{ 
+              flexGrow: 1,
+              fontWeight: 600,
+              color: 'text.primary'
+            }}
+          >
             {menuItems.find((item) => item.path === window.location.pathname)
               ?.text || "Task Manager"}
           </Typography>
