@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import React, { useState, useEffect, useCallback } from 'react'
+import { useParams } from 'react-router-dom'
 import {
   Container,
   Grid,
@@ -31,12 +31,9 @@ import {
   Delete as DeleteIcon,
 } from '@mui/icons-material'
 import axios from 'axios'
-import { useAuth } from '../context/AuthContext'
 
 const TaskBoard = () => {
   const { projectId } = useParams()
-  const navigate = useNavigate()
-  const { user } = useAuth()
   const [tasks, setTasks] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -51,11 +48,7 @@ const TaskBoard = () => {
     priority: 'Medium',
   })
 
-  useEffect(() => {
-    fetchTasks()
-  }, [projectId])
-
-  const fetchTasks = async () => {
+  const fetchTasks = useCallback(async () => {
     try {
       const response = await axios.get(`/api/tasks/project/${projectId}`)
       setTasks(response.data)
@@ -65,7 +58,11 @@ const TaskBoard = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [projectId])
+
+  useEffect(() => {
+    fetchTasks()
+  }, [fetchTasks])
 
   const handleOpenDialog = (task = null) => {
     if (task) {

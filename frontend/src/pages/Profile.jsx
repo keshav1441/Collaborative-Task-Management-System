@@ -18,6 +18,7 @@ import {
   InputLabel,
   Select,
   MenuItem as SelectMenuItem,
+  Alert,
 } from '@mui/material'
 import {
   Person as PersonIcon,
@@ -29,7 +30,7 @@ import {
   Group as GroupIcon,
 } from '@mui/icons-material'
 import axios from 'axios'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../hooks/useAuth'
 
 const Profile = () => {
   const { user, updateUser } = useAuth()
@@ -241,6 +242,11 @@ const Profile = () => {
         <DialogTitle>Edit Profile</DialogTitle>
         <form onSubmit={handleSubmit}>
           <DialogContent>
+            {error && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {error}
+              </Alert>
+            )}
             <TextField
               autoFocus
               margin="dense"

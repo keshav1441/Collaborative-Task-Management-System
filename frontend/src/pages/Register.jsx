@@ -10,7 +10,7 @@ import {
   Alert,
   MenuItem,
 } from '@mui/material'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../hooks/useAuth'
 
 const Register = () => {
   const navigate = useNavigate()

@@ -29,7 +29,7 @@ import {
   Person as PersonIcon,
 } from '@mui/icons-material';
 import axios from 'axios';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 
 const ProjectMembers = ({ projectId, members, onMembersUpdate }) => {
   const [open, setOpen] = useState(false);

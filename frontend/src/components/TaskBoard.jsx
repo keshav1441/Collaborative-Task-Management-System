@@ -30,7 +30,11 @@ import {
 import axios from 'axios';
 import TaskEditDialog from './TaskEditDialog';
 
-const TaskBoard = ({ projectId, onStatusChange }) => {
+const TaskBoard = ({ 
+  projectId, 
+  onStatusChange = () => {}, // Default parameter instead of defaultProps
+  isProjectManager,
+}) => {
   const [columns, setColumns] = useState({
     'To-Do': [],
     'In Progress': [],
@@ -493,6 +497,8 @@ const TaskBoard = ({ projectId, onStatusChange }) => {
         onClose={() => setEditTask(null)}
         task={editTask}
         onTaskUpdated={handleTaskUpdated}
+        projectId={projectId}
+        isProjectManager={isProjectManager}
       />
       
       <TaskEditDialog
@@ -501,9 +507,10 @@ const TaskBoard = ({ projectId, onStatusChange }) => {
         task={null}
         projectId={projectId}
         onTaskUpdated={handleCreateTask}
+        isProjectManager={isProjectManager}
       />
     </>
   );
 };
 
-export default TaskBoard; 
+export default React.memo(TaskBoard); 

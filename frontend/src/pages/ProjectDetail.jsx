@@ -36,7 +36,7 @@ import {
   Assessment as ReportIcon,
 } from '@mui/icons-material'
 import axios from 'axios'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../hooks/useAuth'
 import ProjectMembers from '../components/ProjectMembers'
 import TaskBoard from '../components/TaskBoard'
 import ProjectSummaryReport from '../components/ProjectSummaryReport'

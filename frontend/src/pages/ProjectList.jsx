@@ -28,11 +28,9 @@ import {
   Assignment as TaskIcon,
 } from '@mui/icons-material'
 import axios from 'axios'
-import { useAuth } from '../context/AuthContext'
 
 const ProjectList = () => {
   const navigate = useNavigate()
-  const { user } = useAuth()
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')

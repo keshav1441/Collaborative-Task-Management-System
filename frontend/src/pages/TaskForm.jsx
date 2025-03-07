@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   Container,
@@ -18,12 +18,10 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns'
 import axios from 'axios'
-import { useAuth } from '../context/AuthContext'
 
 const TaskForm = () => {
   const { projectId, taskId } = useParams()
   const navigate = useNavigate()
-  const { user } = useAuth()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [formData, setFormData] = useState({
@@ -37,14 +35,8 @@ const TaskForm = () => {
   })
   const [projectMembers, setProjectMembers] = useState([])
 
-  useEffect(() => {
-    if (taskId) {
-      fetchTask()
-    }
-    fetchProjectMembers()
-  }, [taskId, projectId])
-
-  const fetchTask = async () => {
+  const fetchTask = useCallback(async () => {
+    if (!taskId) return;
     try {
       setLoading(true)
       const response = await axios.get(`/api/tasks/${taskId}`)
@@ -64,9 +56,9 @@ const TaskForm = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [taskId])
 
-  const fetchProjectMembers = async () => {
+  const fetchProjectMembers = useCallback(async () => {
     try {
       console.log('Fetching project members for project:', projectId);
       const response = await axios.get(`/api/projects/${projectId}`);
@@ -87,7 +79,14 @@ const TaskForm = () => {
       console.error('Failed to fetch project members:', err);
       setError('Failed to load project members');
     }
-  }
+  }, [projectId])
+
+  useEffect(() => {
+    if (taskId) {
+      fetchTask()
+    }
+    fetchProjectMembers()
+  }, [taskId, projectId, fetchTask, fetchProjectMembers])
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
