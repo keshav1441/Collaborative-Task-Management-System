@@ -25,7 +25,7 @@ import {
   CalendarToday as CalendarIcon,
   Description as DescriptionIcon,
 } from '@mui/icons-material';
-import axios from 'axios';
+import axiosInstance from '../config/axios';
 
 const ProjectEditDialog = ({ open, onClose, project, onProjectUpdated }) => {
   const [formData, setFormData] = useState({
@@ -46,25 +46,19 @@ const ProjectEditDialog = ({ open, onClose, project, onProjectUpdated }) => {
         console.log('Loading project data for editing:', project);
         console.log('Project end date:', project.endDate);
         
-        const formattedEndDate = project.endDate ? new Date(project.endDate).toISOString().split('T')[0] : '';
-        console.log('Formatted end date for form:', formattedEndDate);
-        
         setFormData({
           name: project.name || '',
           description: project.description || '',
           status: project.status || 'Active',
-          endDate: formattedEndDate,
+          endDate: project.endDate ? new Date(project.endDate).toISOString().split('T')[0] : '',
         });
       } else {
         // Create new project
-        const defaultEndDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-        console.log('Setting default end date for new project:', defaultEndDate);
-        
         setFormData({
           name: '',
           description: '',
           status: 'Active',
-          endDate: defaultEndDate, // Default to 30 days from now
+          endDate: '', // Initialize as empty string
         });
       }
       setError('');
@@ -74,6 +68,7 @@ const ProjectEditDialog = ({ open, onClose, project, onProjectUpdated }) => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    console.log('Input change:', { name, value });
     setFormData(prev => ({
       ...prev,
       [name]: value,
@@ -93,36 +88,28 @@ const ProjectEditDialog = ({ open, onClose, project, onProjectUpdated }) => {
       return;
     }
 
-    console.log('Form data before submission:', formData);
-    console.log('End date value:', formData.endDate);
-    console.log('End date type:', typeof formData.endDate);
-
     try {
-      // Create a copy of the form data with a properly formatted end date
+      // Format the end date properly
       const formDataToSubmit = {
         ...formData,
-        endDate: new Date(formData.endDate).toISOString()
+        endDate: formData.endDate ? new Date(formData.endDate + 'T00:00:00.000Z').toISOString() : null
       };
       
-      console.log('Submitting form data:', formDataToSubmit);
+      console.log('Submitting project data:', formDataToSubmit);
       
       let response;
       
       if (isNewProject) {
-        // Create new project
-        console.log('Creating new project with data:', formDataToSubmit);
-        response = await axios.post('/api/projects', formDataToSubmit);
-        setSuccess(true);
-        onProjectUpdated(response.data);
+        response = await axiosInstance.post('/projects', formDataToSubmit);
+        console.log('Created new project:', response.data);
       } else {
-        // Update existing project
-        console.log('Updating project with ID:', project._id, 'Data:', formDataToSubmit);
-        response = await axios.patch(`/api/projects/${project._id}`, formDataToSubmit);
-        setSuccess(true);
-        onProjectUpdated(response.data);
+        response = await axiosInstance.patch(`/projects/${project._id}`, formDataToSubmit);
+        console.log('Updated project:', response.data);
       }
       
-      // Close dialog after a short delay to show success message
+      setSuccess(true);
+      onProjectUpdated(response.data);
+      
       setTimeout(() => {
         onClose();
       }, 1000);

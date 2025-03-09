@@ -1,12 +1,17 @@
 import axios from "axios";
-import { API_URL } from "./config";
 
-// Create axios instance with base URL
+// Get the backend URL from environment variables
+const backendUrl = window._env_?.REACT_APP_BACKEND_URL || import.meta.env?.REACT_APP_BACKEND_URL;
+
+// Create axios instance with default config
 const axiosInstance = axios.create({
-  baseURL: API_URL,
+  baseURL: backendUrl,
+  headers: {
+    'Content-Type': 'application/json'
+  }
 });
 
-// Add request interceptor to add auth token
+// Add request interceptor to handle auth token
 axiosInstance.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");

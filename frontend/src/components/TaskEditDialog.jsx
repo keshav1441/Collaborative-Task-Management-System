@@ -177,6 +177,24 @@ const TaskEditDialog = ({ open, onClose, task, projectId, onTaskUpdated, isProje
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     console.log('Input change:', { name, value, isProjectManager });
+    
+    // Special handling for status changes
+    if (name === 'status') {
+      console.log('Status change detected:', {
+        currentStatus: formData.status,
+        newStatus: value,
+        isProjectManager,
+        canEdit: canEditTask()
+      });
+
+      // Directly set the status without mapping
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+      }));
+      return;
+    }
+    
     setFormData(prev => ({
       ...prev,
       [name]: value,
@@ -205,9 +223,23 @@ const TaskEditDialog = ({ open, onClose, task, projectId, onTaskUpdated, isProje
         assignee: formData.assignee || null,
         dueDate: formData.dueDate ? new Date(formData.dueDate).toISOString() : null,
         priority: formData.priority || 'Medium',
-        status: ['To-Do', 'In Progress', 'Completed'].includes(formData.status) ? formData.status : 'To-Do',
+        status: formData.status,
         projectId: projectId
       };
+
+      console.log('Task data before validation:', taskData);
+
+      // Validate status transition
+      const validStatuses = ['To-Do', 'In Progress', 'Completed'];
+      if (!validStatuses.includes(taskData.status)) {
+        console.error('Invalid status detected:', {
+          status: taskData.status,
+          validStatuses: validStatuses
+        });
+        setError(`Invalid status value: ${taskData.status}`);
+        setLoading(false);
+        return;
+      }
 
       // Remove any undefined or null values except assignee which can be null
       const cleanTaskData = Object.entries(taskData).reduce((acc, [key, value]) => {
@@ -217,16 +249,7 @@ const TaskEditDialog = ({ open, onClose, task, projectId, onTaskUpdated, isProje
         return acc;
       }, {});
       
-      console.log('Submitting task with data:', {
-        taskData: cleanTaskData,
-        isNewTask,
-        taskId: task?._id,
-        permissions: {
-          isProjectManager,
-          isProjectOwner,
-          canEdit: canEditTask()
-        }
-      });
+      console.log('Submitting task with data:', cleanTaskData);
       
       if (isNewTask) {
         response = await axios.post('/api/tasks', cleanTaskData);
@@ -447,7 +470,7 @@ const TaskEditDialog = ({ open, onClose, task, projectId, onTaskUpdated, isProje
               onChange={handleInputChange}
               label="Status"
             >
-              <MenuItem value="To-Do">To Do</MenuItem>
+              <MenuItem value="To-Do">To-Do</MenuItem>
               <MenuItem value="In Progress">In Progress</MenuItem>
               <MenuItem value="Completed">Completed</MenuItem>
             </Select>

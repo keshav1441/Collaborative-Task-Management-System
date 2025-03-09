@@ -7,13 +7,15 @@ const path = require("path");
 // Create new project
 exports.createProject = async (req, res) => {
   try {
-    const { name, description, members } = req.body;
+    const { name, description, members, endDate, status } = req.body;
 
     // Create the project with the owner
     const project = new Project({
       name,
       description,
       owner: req.user._id,
+      endDate: endDate || null,
+      status: status || 'Active',
       members: [
         {
           user: req.user._id,
