@@ -24,6 +24,7 @@ const Register = () => {
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [errors, setErrors] = useState({})
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -36,26 +37,48 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+    setErrors({})
 
-    if (formData.password !== formData.confirmPassword) {
-      return setError('Passwords do not match')
+    if (!validateForm()) {
+      return
     }
 
     setLoading(true)
-
     try {
-      await register({
-        name: formData.name,
-        email: formData.email,
-        password: formData.password,
-        role: formData.role,
-      })
+      await register(formData.name.trim(), formData.email.trim(), formData.password)
       navigate('/')
     } catch (err) {
-      setError(err.message || 'Failed to create account')
+      // Handle mongoose validation errors
+      if (err.response?.data?.errors) {
+        const validationErrors = {}
+        Object.keys(err.response.data.errors).forEach(field => {
+          validationErrors[field] = err.response.data.errors[field].message
+        })
+        setErrors(validationErrors)
+      } else if (err.response?.data?.message) {
+        // Handle duplicate email error
+        if (err.response.data.message.includes('duplicate')) {
+          setErrors(prev => ({
+            ...prev,
+            email: 'This email is already registered'
+          }))
+        } else {
+          setError(err.response.data.message)
+        }
+      } else {
+        setError('Failed to create an account. Please try again.')
+      }
     } finally {
       setLoading(false)
     }
+  }
+
+  const validateForm = () => {
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match')
+      return false
+    }
+    return true
   }
 
   return (
@@ -88,6 +111,8 @@ const Register = () => {
             autoFocus
             value={formData.name}
             onChange={handleChange}
+            error={!!errors.name}
+            helperText={errors.name}
           />
           <TextField
             margin="normal"
@@ -99,6 +124,8 @@ const Register = () => {
             autoComplete="email"
             value={formData.email}
             onChange={handleChange}
+            error={!!errors.email}
+            helperText={errors.email}
           />
           <TextField
             margin="normal"
@@ -111,6 +138,8 @@ const Register = () => {
             autoComplete="new-password"
             value={formData.password}
             onChange={handleChange}
+            error={!!errors.password}
+            helperText={errors.password}
           />
           <TextField
             margin="normal"
@@ -122,6 +151,8 @@ const Register = () => {
             id="confirmPassword"
             value={formData.confirmPassword}
             onChange={handleChange}
+            error={!!errors.confirmPassword}
+            helperText={errors.confirmPassword}
           />
           <TextField
             margin="normal"

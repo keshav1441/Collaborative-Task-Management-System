@@ -1,263 +1,271 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link as RouterLink } from 'react-router-dom'
 import {
-  Container,
-  Grid,
-  Paper,
-  Typography,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
-  Button,
   Box,
+  Grid,
+  Card,
+  CardContent,
+  Typography,
+  Button,
+  IconButton,
   Chip,
-  CircularProgress,
+  LinearProgress,
+  Avatar,
+  AvatarGroup,
+  Tooltip,
 } from '@mui/material'
 import {
-  Assignment as TaskIcon,
-  AssignmentTurnedIn as CompletedIcon,
-  Schedule as InProgressIcon,
-  Warning as OverdueIcon,
+  Add as AddIcon,
+  ArrowForward as ArrowForwardIcon,
+  Assignment as AssignmentIcon,
+  CheckCircle as CheckCircleIcon,
+  Schedule as ScheduleIcon,
+  Warning as WarningIcon,
 } from '@mui/icons-material'
 import axios from 'axios'
 import { useAuth } from '../hooks/useAuth'
 
 const Dashboard = () => {
-  const navigate = useNavigate()
   const { user } = useAuth()
-  const [tasks, setTasks] = useState([])
   const [projects, setProjects] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [tasks, setTasks] = useState([])
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchDashboardData = async () => {
       try {
-        const [tasksResponse, projectsResponse] = await Promise.all([
-          axios.get('/api/tasks/user'),
+        const [projectsRes, tasksRes] = await Promise.all([
           axios.get('/api/projects'),
+          axios.get('/api/tasks/assigned'),
         ])
-
-        setTasks(tasksResponse.data)
-        setProjects(projectsResponse.data)
-      } catch (err) {
-        setError('Failed to fetch dashboard data')
-        console.error(err)
-      } finally {
-        setLoading(false)
+        setProjects(projectsRes.data)
+        setTasks(tasksRes.data)
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error)
       }
     }
 
-    fetchData()
+    fetchDashboardData()
   }, [])
 
-  const getTaskStatusColor = (status) => {
-    switch (status) {
-      case 'Completed':
-        return 'success'
-      case 'In Progress':
-        return 'primary'
-      case 'To-Do':
-        return 'default'
-      default:
-        return 'default'
+  const getStatusColor = (status) => {
+    const colors = {
+      'Not Started': '#F59E0B',
+      'In Progress': '#3B82F6',
+      Completed: '#10B981',
+      Blocked: '#EF4444',
     }
+    return colors[status] || colors['Not Started']
   }
 
-  const getPriorityColor = (priority) => {
-    switch (priority) {
-      case 'High':
-        return 'error'
-      case 'Medium':
-        return 'warning'
-      case 'Low':
-        return 'success'
-      default:
-        return 'default'
-    }
-  }
-
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
-        <CircularProgress />
-      </Box>
-    )
-  }
-
-  if (error) {
-    return (
-      <Container>
-        <Typography color="error" align="center">
-          {error}
-        </Typography>
-      </Container>
-    )
+  const getProjectProgress = (project) => {
+    if (!project.tasks || project.tasks.length === 0) return 0
+    const completed = project.tasks.filter((task) => task.status === 'Completed').length
+    return (completed / project.tasks.length) * 100
   }
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Grid container spacing={3}>
-        {/* Welcome Section */}
-        <Grid item xs={12}>
-          <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>
-            <Typography variant="h4" gutterBottom>
-              Welcome, {user.name}!
-            </Typography>
-            <Typography variant="subtitle1" color="text.secondary">
-              Here's an overview of your tasks and projects
-            </Typography>
-          </Paper>
-        </Grid>
+    <Box>
+      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography variant="h4" sx={{ fontWeight: 700 }}>
+          Welcome back, {user?.name}!
+        </Typography>
+        <Button
+          component={RouterLink}
+          to="/projects/new"
+          variant="contained"
+          startIcon={<AddIcon />}
+          sx={{
+            borderRadius: 2,
+            textTransform: 'none',
+            px: 3,
+          }}
+        >
+          New Project
+        </Button>
+      </Box>
 
-        {/* Task Statistics */}
-        <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>
-            <Typography variant="h6" gutterBottom>
-              Task Statistics
-            </Typography>
-            <List>
-              <ListItem>
-                <ListItemIcon>
-                  <TaskIcon />
-                </ListItemIcon>
-                <ListItemText primary="Total Tasks" secondary={tasks.length} />
-              </ListItem>
-              <ListItem>
-                <ListItemIcon>
-                  <CompletedIcon />
-                </ListItemIcon>
-                <ListItemText
-                  primary="Completed"
-                  secondary={tasks.filter((task) => task.status === 'Completed').length}
-                />
-              </ListItem>
-              <ListItem>
-                <ListItemIcon>
-                  <InProgressIcon />
-                </ListItemIcon>
-                <ListItemText
-                  primary="In Progress"
-                  secondary={tasks.filter((task) => task.status === 'In Progress').length}
-                />
-              </ListItem>
-              <ListItem>
-                <ListItemIcon>
-                  <OverdueIcon />
-                </ListItemIcon>
-                <ListItemText
-                  primary="Overdue"
-                  secondary={
-                    tasks.filter(
-                      (task) =>
-                        task.status !== 'Completed' &&
-                        new Date(task.dueDate) < new Date()
-                    ).length
-                  }
-                />
-              </ListItem>
-            </List>
-          </Paper>
+      <Grid container spacing={3}>
+        {/* Project Overview */}
+        <Grid item xs={12}>
+          <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+            Active Projects
+          </Typography>
+          <Grid container spacing={2}>
+            {projects.slice(0, 3).map((project) => (
+              <Grid item xs={12} md={4} key={project._id}>
+                <Card
+                  sx={{
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    position: 'relative',
+                    overflow: 'visible',
+                    '&:hover': {
+                      transform: 'translateY(-4px)',
+                      transition: 'transform 0.2s ease-in-out',
+                    },
+                  }}
+                >
+                  <CardContent sx={{ flexGrow: 1 }}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
+                        {project.name}
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{
+                          mb: 2,
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        {project.description}
+                      </Typography>
+                    </Box>
+
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                        Progress
+                      </Typography>
+                      <LinearProgress
+                        variant="determinate"
+                        value={getProjectProgress(project)}
+                        sx={{
+                          height: 6,
+                          borderRadius: 3,
+                          bgcolor: 'rgba(255, 255, 255, 0.08)',
+                          '& .MuiLinearProgress-bar': {
+                            borderRadius: 3,
+                          },
+                        }}
+                      />
+                    </Box>
+
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <AvatarGroup max={3} sx={{ '& .MuiAvatar-root': { width: 30, height: 30, fontSize: '0.875rem' } }}>
+                        {project.members?.map((member) => (
+                          <Tooltip key={member._id} title={member.name}>
+                            <Avatar alt={member.name}>{member.name.charAt(0)}</Avatar>
+                          </Tooltip>
+                        ))}
+                      </AvatarGroup>
+                      <IconButton
+                        component={RouterLink}
+                        to={`/projects/${project._id}`}
+                        size="small"
+                        sx={{
+                          bgcolor: 'primary.main',
+                          color: 'white',
+                          '&:hover': {
+                            bgcolor: 'primary.dark',
+                          },
+                        }}
+                      >
+                        <ArrowForwardIcon />
+                      </IconButton>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
         </Grid>
 
         {/* Recent Tasks */}
-        <Grid item xs={12} md={8}>
-          <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-              <Typography variant="h6">Recent Tasks</Typography>
-              <Button variant="contained" onClick={() => navigate('/projects')}>
-                View All Tasks
-              </Button>
-            </Box>
-            <List>
-              {tasks.slice(0, 5).map((task) => (
-                <ListItem
-                  key={task._id}
-                  button
-                  onClick={() =>
-                    navigate(`/projects/${task.project._id}/tasks/${task._id}`)
-                  }
+        <Grid item xs={12}>
+          <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+            Your Tasks
+          </Typography>
+          <Grid container spacing={2}>
+            {tasks.slice(0, 4).map((task) => (
+              <Grid item xs={12} md={6} key={task._id}>
+                <Card
+                  sx={{
+                    height: '100%',
+                    '&:hover': {
+                      transform: 'translateY(-4px)',
+                      transition: 'transform 0.2s ease-in-out',
+                    },
+                  }}
                 >
-                  <ListItemText
-                    primary={task.title}
-                    secondary={
-                      <Box component="span">
-                        <Typography component="span" variant="body2">
-                          {task.project.name}
+                  <CardContent>
+                    <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
+                      <Box sx={{ flexGrow: 1 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 0.5 }}>
+                          {task.title}
                         </Typography>
-                        {' • '}
-                        <Typography component="span" variant="body2">
-                          Due: {new Date(task.dueDate).toLocaleDateString()}
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                          }}
+                        >
+                          {task.description}
                         </Typography>
                       </Box>
-                    }
-                  />
-                  <Box>
-                    <Chip
-                      label={task.status}
-                      color={getTaskStatusColor(task.status)}
-                      size="small"
-                      sx={{ mr: 1 }}
-                    />
-                    <Chip
-                      label={task.priority}
-                      color={getPriorityColor(task.priority)}
-                      size="small"
-                    />
-                  </Box>
-                </ListItem>
-              ))}
-            </List>
-          </Paper>
-        </Grid>
-
-        {/* Active Projects */}
-        <Grid item xs={12}>
-          <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-              <Typography variant="h6">Active Projects</Typography>
-              <Button variant="contained" onClick={() => navigate('/projects')}>
-                View All Projects
-              </Button>
-            </Box>
-            <Grid container spacing={2}>
-              {projects.slice(0, 3).map((project) => (
-                <Grid item xs={12} sm={6} md={4} key={project._id}>
-                  <Paper
-                    sx={{
-                      p: 2,
-                      cursor: 'pointer',
-                      '&:hover': {
-                        bgcolor: 'action.hover',
-                      },
-                    }}
-                    onClick={() => navigate(`/projects/${project._id}`)}
-                  >
-                    <Typography variant="h6" gutterBottom>
-                      {project.name}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" gutterBottom>
-                      {project.description}
-                    </Typography>
-                    <Box display="flex" justifyContent="space-between" alignItems="center">
-                      <Typography variant="body2" color="text.secondary">
-                        {project.tasks.length} tasks
-                      </Typography>
                       <Chip
-                        label={project.status}
-                        color={project.status === 'Active' ? 'success' : 'default'}
+                        label={task.status}
                         size="small"
+                        sx={{
+                          ml: 2,
+                          bgcolor: `${getStatusColor(task.status)}20`,
+                          color: getStatusColor(task.status),
+                          fontWeight: 600,
+                        }}
                       />
                     </Box>
-                  </Paper>
-                </Grid>
-              ))}
-            </Grid>
-          </Paper>
+
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Tooltip title={task.project?.name || 'No project'}>
+                          <AssignmentIcon sx={{ fontSize: 20, color: 'text.secondary', mr: 1 }} />
+                        </Tooltip>
+                        <Typography variant="body2" color="text.secondary">
+                          {task.project?.name}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        {task.dueDate && (
+                          <Tooltip title="Due date">
+                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                              <ScheduleIcon sx={{ fontSize: 20, color: 'text.secondary', mr: 0.5 }} />
+                              <Typography variant="body2" color="text.secondary">
+                                {new Date(task.dueDate).toLocaleDateString()}
+                              </Typography>
+                            </Box>
+                          </Tooltip>
+                        )}
+                        <IconButton
+                          component={RouterLink}
+                          to={`/projects/${task.project?._id}/tasks/${task._id}`}
+                          size="small"
+                          sx={{
+                            bgcolor: 'primary.main',
+                            color: 'white',
+                            '&:hover': {
+                              bgcolor: 'primary.dark',
+                            },
+                          }}
+                        >
+                          <ArrowForwardIcon />
+                        </IconButton>
+                      </Box>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
         </Grid>
       </Grid>
-    </Container>
+    </Box>
   )
 }
 

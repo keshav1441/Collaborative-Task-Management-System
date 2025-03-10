@@ -1,47 +1,54 @@
-import { Routes, Route } from 'react-router-dom'
+import React from 'react'
+import { ThemeProvider, CssBaseline, GlobalStyles } from '@mui/material'
+import { theme } from './theme'
+import AppRoutes from './routes'
 
-// Pages
-import Login from './pages/Login'
-import Register from './pages/Register'
-import Dashboard from './pages/Dashboard'
-import ProjectList from './pages/ProjectList'
-import ProjectDetail from './pages/ProjectDetail'
-import TaskBoard from './pages/TaskBoard'
-import TaskDetail from './pages/TaskDetail'
-import TaskForm from './pages/TaskForm'
-import Profile from './pages/Profile'
-
-// Components
-import PrivateRoute from './components/PrivateRoute'
-import Layout from './components/Layout'
+const globalStyles = {
+  '*': {
+    boxSizing: 'border-box',
+    margin: 0,
+    padding: 0,
+  },
+  html: {
+    WebkitFontSmoothing: 'antialiased',
+    MozOsxFontSmoothing: 'grayscale',
+    height: '100%',
+    width: '100%',
+  },
+  body: {
+    backgroundColor: '#0A0F1E',
+    height: '100%',
+    width: '100%',
+  },
+  '#root': {
+    height: '100%',
+    width: '100%',
+  },
+  '::-webkit-scrollbar': {
+    width: '8px',
+    height: '8px',
+  },
+  '::-webkit-scrollbar-track': {
+    background: 'rgba(255, 255, 255, 0.05)',
+  },
+  '::-webkit-scrollbar-thumb': {
+    background: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: '4px',
+    '&:hover': {
+      background: 'rgba(255, 255, 255, 0.2)',
+    },
+  },
+}
 
 function App() {
   return (
-    <Routes>
-      {/* Public routes */}
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
-
-      {/* Protected routes */}
-      <Route
-        path="/"
-        element={
-          <PrivateRoute>
-            <Layout />
-          </PrivateRoute>
-        }
-      >
-        <Route index element={<Dashboard />} />
-        <Route path="projects" element={<ProjectList />} />
-        <Route path="projects/:projectId" element={<ProjectDetail />} />
-        <Route path="projects/:projectId/board" element={<TaskBoard />} />
-        <Route path="projects/:projectId/tasks/new" element={<TaskForm />} />
-        <Route path="projects/:projectId/tasks/:taskId/edit" element={<TaskForm />} />
-        <Route path="projects/:projectId/tasks/:taskId" element={<TaskDetail />} />
-        <Route path="profile" element={<Profile />} />
-      </Route>
-    </Routes>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <GlobalStyles styles={globalStyles} />
+      <AppRoutes />
+    </ThemeProvider>
   )
 }
 
 export default App
+

@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Outlet, useNavigate } from "react-router-dom";
+import { useState } from 'react'
+import { Outlet, useNavigate, useLocation, Link as RouterLink } from 'react-router-dom'
 import {
   AppBar,
   Box,
@@ -10,209 +10,222 @@ import {
   ListItem,
   ListItemIcon,
   ListItemText,
-  Menu,
-  MenuItem,
   Toolbar,
   Typography,
-} from "@mui/material";
+  Avatar,
+  Menu,
+  MenuItem,
+  ListItemButton,
+  Tooltip,
+  useTheme,
+  useMediaQuery,
+} from '@mui/material'
 import {
   Menu as MenuIcon,
   Dashboard as DashboardIcon,
   Assignment as ProjectIcon,
   Person as ProfileIcon,
+  ChevronLeft as ChevronLeftIcon,
   ExitToApp as LogoutIcon,
-} from "@mui/icons-material";
-import { useAuth } from "../hooks/useAuth";
+} from '@mui/icons-material'
+import { useAuth } from '../hooks/useAuth'
 
-const drawerWidth = 240;
+const drawerWidth = 240
 
 const Layout = () => {
-  const navigate = useNavigate();
-  const { logout } = useAuth();
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const theme = useTheme()
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'))
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const [anchorEl, setAnchorEl] = useState(null)
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
+  const location = useLocation()
 
   const handleDrawerToggle = () => {
-    setMobileOpen(!mobileOpen);
+    setMobileOpen(!mobileOpen)
+  }
+
+  const handleMenuOpen = (event) => {
+    setAnchorEl(event.currentTarget)
+  }
+
+  const handleMenuClose = () => {
+    setAnchorEl(null)
   }
 
   const handleLogout = () => {
-    logout();
-    navigate("/login");
-  };
+    handleMenuClose()
+    logout()
+    navigate('/login')
+  }
 
   const menuItems = [
-    { text: "Dashboard", icon: <DashboardIcon />, path: "/" },
-    { text: "Projects", icon: <ProjectIcon />, path: "/projects" },
-    { text: "Profile", icon: <ProfileIcon />, path: "/profile" },
-  ];
+    { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
+    { text: 'Projects', icon: <ProjectIcon />, path: '/projects' },
+    { text: 'Profile', icon: <ProfileIcon />, path: '/profile' },
+  ]
 
   const drawer = (
-    <Box sx={{
-      height: '100%',
-      display: 'flex',
-      flexDirection: 'column',
-      bgcolor: '#ffffff',
-      background: 'linear-gradient(180deg, rgba(255,255,255,1) 0%, rgba(250,252,255,1) 100%)'
-    }}>
-      <Toolbar sx={{ 
-        px: 2,
-        borderBottom: '1px solid rgba(0,0,0,0.08)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }}>
-        <Typography 
-          variant="h5" 
-          sx={{ 
-            fontWeight: 700, 
-            color: 'primary.main',
-            letterSpacing: '-0.5px',
-            display: 'flex',
-            alignItems: 'center',
-            py: 1
-          }}
-        >
-          <ProjectIcon sx={{ mr: 1.5, fontSize: 28 }} />
-          Task Master
+    <Box sx={{ height: '100%', backgroundColor: 'background.default' }}>
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          p: 2,
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+        }}
+      >
+        <Typography variant="h6" sx={{ fontWeight: 700, color: 'primary.main' }}>
+          PlanIt
         </Typography>
-      </Toolbar>
-      <List sx={{ px: 1, py: 2, flexGrow: 1 }}>
-        {menuItems.map((item) => {
-          const isActive = window.location.pathname === item.path;
-          return (
-            <ListItem 
-              button 
-              key={item.text} 
-              onClick={() => navigate(item.path)}
+        {isMobile && (
+          <IconButton onClick={handleDrawerToggle}>
+            <ChevronLeftIcon />
+          </IconButton>
+        )}
+      </Box>
+      <List sx={{ p: 2 }}>
+        {menuItems.map((item) => (
+          <ListItem key={item.text} disablePadding>
+            <ListItemButton
+              component={RouterLink}
+              to={item.path}
+              selected={location.pathname === item.path}
               sx={{
-                borderRadius: 2,
-                mb: 1,
-                bgcolor: isActive ? 'rgba(58, 123, 213, 0.08)' : 'transparent',
-                color: isActive ? 'primary.main' : 'text.primary',
-                '&:hover': {
-                  bgcolor: isActive ? 'rgba(58, 123, 213, 0.12)' : 'rgba(0, 0, 0, 0.04)',
+                borderRadius: 1,
+                mb: 0.5,
+                '&.Mui-selected': {
+                  backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                  '&:hover': {
+                    backgroundColor: 'rgba(79, 70, 229, 0.2)',
+                  },
                 },
-                py: 1.2,
-                px: 1.5
+                '&:hover': {
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                },
               }}
             >
-              <ListItemIcon sx={{ 
-                minWidth: 40,
-                color: isActive ? 'primary.main' : 'text.secondary' 
-              }}>
+              <ListItemIcon sx={{ color: location.pathname === item.path ? 'primary.main' : 'text.secondary' }}>
                 {item.icon}
               </ListItemIcon>
-              <ListItemText 
-                primary={item.text} 
-                primaryTypographyProps={{ 
-                  fontWeight: isActive ? 600 : 500,
-                  fontSize: '0.95rem'  
+              <ListItemText
+                primary={item.text}
+                sx={{
+                  '& .MuiListItemText-primary': {
+                    color: location.pathname === item.path ? 'primary.main' : 'text.primary',
+                    fontWeight: location.pathname === item.path ? 600 : 400,
+                  },
                 }}
               />
-            </ListItem>
-          );
-        })}
+            </ListItemButton>
+          </ListItem>
+        ))}
       </List>
-      <Box sx={{ p: 2, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
-        <ListItem 
-          button 
-          onClick={handleLogout}
-          sx={{
-            borderRadius: 2,
-            bgcolor: 'rgba(244, 67, 54, 0.08)',
-            color: 'error.main',
-            '&:hover': {
-              bgcolor: 'rgba(244, 67, 54, 0.12)',
-            },
-            py: 1.2,
-            px: 1.5
-          }}
-        >
-          <ListItemIcon sx={{ minWidth: 40, color: 'error.main' }}>
-            <LogoutIcon />
-          </ListItemIcon>
-          <ListItemText 
-            primary="Logout" 
-            primaryTypographyProps={{ 
-              fontWeight: 600,
-              fontSize: '0.95rem'  
-            }}
-          />
-        </ListItem>
-      </Box>
     </Box>
-  );
+  )
 
   return (
-    <Box sx={{ display: "flex" }}>
+    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
       <CssBaseline />
       <AppBar
         position="fixed"
         sx={{
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
-          ml: { sm: `${drawerWidth}px` },
-          bgcolor: 'white',
-          color: 'text.primary',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.08)'
+          width: { md: `calc(100% - ${drawerWidth}px)` },
+          ml: { md: `${drawerWidth}px` },
         }}
-        elevation={0}
       >
-        <Toolbar>
+        <Toolbar sx={{ justifyContent: 'space-between' }}>
           <IconButton
             color="inherit"
             aria-label="open drawer"
             edge="start"
             onClick={handleDrawerToggle}
-            sx={{ mr: 2, display: { sm: "none" } }}
+            sx={{ mr: 2, display: { md: 'none' } }}
           >
             <MenuIcon />
           </IconButton>
-          <Typography 
-            variant="h6" 
-            noWrap 
-            component="div" 
-            sx={{ 
-              flexGrow: 1,
-              fontWeight: 600,
-              color: 'text.primary'
-            }}
-          >
-            {menuItems.find((item) => item.path === window.location.pathname)
-              ?.text || "Task Manager"}
+          <Typography variant="h6" noWrap component="div" sx={{ display: { xs: 'none', sm: 'block' } }}>
+            {menuItems.find((item) => item.path === location.pathname)?.text || 'Dashboard'}
           </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Tooltip title="Account settings">
+              <IconButton
+                onClick={handleMenuOpen}
+                size="small"
+                sx={{ padding: 0.5 }}
+                aria-controls={anchorEl ? 'account-menu' : undefined}
+                aria-haspopup="true"
+                aria-expanded={anchorEl ? 'true' : undefined}
+              >
+                <Avatar
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    bgcolor: 'primary.main',
+                    fontSize: '1rem',
+                    fontWeight: 600,
+                  }}
+                >
+                  {user?.name?.charAt(0).toUpperCase()}
+                </Avatar>
+              </IconButton>
+            </Tooltip>
+            <Menu
+              id="account-menu"
+              anchorEl={anchorEl}
+              open={Boolean(anchorEl)}
+              onClose={handleMenuClose}
+              onClick={handleMenuClose}
+              transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+              anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+              PaperProps={{
+                sx: {
+                  mt: 1,
+                  backgroundColor: 'background.paper',
+                  borderRadius: 2,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                },
+              }}
+            >
+              <MenuItem component={RouterLink} to="/profile">
+                <ListItemIcon>
+                  <ProfileIcon fontSize="small" />
+                </ListItemIcon>
+                Profile
+              </MenuItem>
+              <MenuItem onClick={handleLogout}>
+                <ListItemIcon>
+                  <LogoutIcon fontSize="small" />
+                </ListItemIcon>
+                Logout
+              </MenuItem>
+            </Menu>
+          </Box>
         </Toolbar>
       </AppBar>
       <Box
         component="nav"
-        sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
+        sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 } }}
       >
         <Drawer
-          variant="temporary"
-          open={mobileOpen}
+          variant={isMobile ? 'temporary' : 'permanent'}
+          open={isMobile ? mobileOpen : true}
           onClose={handleDrawerToggle}
           ModalProps={{
             keepMounted: true, // Better open performance on mobile.
           }}
           sx={{
-            display: { xs: "block", sm: "none" },
-            "& .MuiDrawer-paper": {
-              boxSizing: "border-box",
+            '& .MuiDrawer-paper': {
+              boxSizing: 'border-box',
               width: drawerWidth,
+              borderRight: '1px solid',
+              borderColor: 'divider',
+              backgroundColor: 'background.default',
             },
           }}
-        >
-          {drawer}
-        </Drawer>
-        <Drawer
-          variant="permanent"
-          sx={{
-            display: { xs: "none", sm: "block" },
-            "& .MuiDrawer-paper": {
-              boxSizing: "border-box",
-              width: drawerWidth,
-            },
-          }}
-          open
         >
           {drawer}
         </Drawer>
@@ -222,14 +235,16 @@ const Layout = () => {
         sx={{
           flexGrow: 1,
           p: 3,
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
-          mt: "64px",
+          width: { md: `calc(100% - ${drawerWidth}px)` },
+          minHeight: '100vh',
+          backgroundColor: 'background.default',
         }}
       >
+        <Toolbar />
         <Outlet />
       </Box>
     </Box>
-  );
-};
+  )
+}
 
-export default Layout; 
+export default Layout 
