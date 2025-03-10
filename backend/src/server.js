@@ -13,8 +13,12 @@ console.log('Environment variables loaded:', {
   PORT: process.env.PORT,
 });
 
+const cors = require('cors'); // Import CORS
 const app = require("./app");
 const connectDB = require("./config/db");
+
+// Enable CORS for all requests
+app.use(cors({ origin: '*', credentials: true }));
 
 // Connect to MongoDB
 connectDB()
