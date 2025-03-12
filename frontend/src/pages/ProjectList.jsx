@@ -29,6 +29,18 @@ import {
 } from '@mui/icons-material'
 import axios from 'axios'
 
+export const fetchProjects = async (setProjects, setError, setLoading) => {
+    try {
+      const response = await axios.get('/api/projects')
+      setProjects(response.data)
+    } catch (err) {
+      setError('Failed to fetch projects')
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
 const ProjectList = () => {
   const navigate = useNavigate()
   const [projects, setProjects] = useState([])
@@ -45,20 +57,8 @@ const ProjectList = () => {
   })
 
   useEffect(() => {
-    fetchProjects()
+    fetchProjects(setProjects, setError, setLoading)
   }, [])
-
-  const fetchProjects = async () => {
-    try {
-      const response = await axios.get('/api/projects')
-      setProjects(response.data)
-    } catch (err) {
-      setError('Failed to fetch projects')
-      console.error(err)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const handleOpenDialog = () => {
     setFormData({
@@ -106,7 +106,7 @@ const ProjectList = () => {
       } else {
         await axios.post('/api/projects', formData)
       }
-      fetchProjects()
+      fetchProjects(setProjects, setError, setLoading)
       handleCloseDialog()
     } catch (err) {
       setError('Failed to save project')
@@ -117,7 +117,7 @@ const ProjectList = () => {
   const handleDelete = async () => {
     try {
       await axios.delete(`/api/projects/${selectedProject._id}`)
-      fetchProjects()
+      fetchProjects(setProjects, setError, setLoading)
       handleMenuClose()
     } catch (err) {
       setError('Failed to delete project')

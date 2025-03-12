@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import {
   Box,
   Grid,
@@ -13,6 +14,12 @@ import {
   Avatar,
   AvatarGroup,
   Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Paper,
 } from '@mui/material'
 import {
   Add as AddIcon,
@@ -21,30 +28,42 @@ import {
   CheckCircle as CheckCircleIcon,
   Schedule as ScheduleIcon,
   Warning as WarningIcon,
+  MoreVert as MoreVertIcon,
 } from '@mui/icons-material'
 import axios from 'axios'
 import { useAuth } from '../hooks/useAuth'
+import { fetchProjects } from './ProjectList'
 
 const Dashboard = () => {
+  const navigate = useNavigate()
   const { user } = useAuth()
   const [projects, setProjects] = useState([])
   const [tasks, setTasks] = useState([])
+  const [openDialog, setOpenDialog] = useState(false)
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    startDate: '',
+    endDate: '',
+  })
+
+  const fetchDashboardData = async () => {
+    try {
+      const [projectsRes, tasksRes] = await Promise.all([
+        axios.get('/api/projects'),
+        axios.get('/api/tasks/assigned'),
+      ])
+      console.log('Projects fetched:', projectsRes.data)
+      console.log('Tasks fetched:', tasksRes.data)
+      setProjects(projectsRes.data)
+      setTasks(tasksRes.data)
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error)
+    }
+  }
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        const [projectsRes, tasksRes] = await Promise.all([
-          axios.get('/api/projects'),
-          axios.get('/api/tasks/assigned'),
-        ])
-        setProjects(projectsRes.data)
-        setTasks(tasksRes.data)
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error)
-      }
-    }
-
-    fetchDashboardData()
+    fetchProjects(setProjects, console.error, () => {})
   }, [])
 
   const getStatusColor = (status) => {
@@ -57,10 +76,43 @@ const Dashboard = () => {
     return colors[status] || colors['Not Started']
   }
 
-  const getProjectProgress = (project) => {
-    if (!project.tasks || project.tasks.length === 0) return 0
-    const completed = project.tasks.filter((task) => task.status === 'Completed').length
-    return (completed / project.tasks.length) * 100
+  const handleOpenDialog = () => {
+    setFormData({
+      name: '',
+      description: '',
+      startDate: '',
+      endDate: '',
+    })
+    setOpenDialog(true)
+  }
+
+  const handleCloseDialog = () => {
+    setOpenDialog(false)
+    setFormData({
+      name: '',
+      description: '',
+      startDate: '',
+      endDate: '',
+    })
+  }
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }))
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    try {
+      await axios.post('/api/projects', formData)
+      fetchDashboardData()
+      handleCloseDialog()
+    } catch (err) {
+      console.error('Failed to create project:', err)
+    }
   }
 
   return (
@@ -70,8 +122,6 @@ const Dashboard = () => {
           Welcome back, {user?.name}!
         </Typography>
         <Button
-          component={RouterLink}
-          to="/projects/new"
           variant="contained"
           startIcon={<AddIcon />}
           sx={{
@@ -79,10 +129,68 @@ const Dashboard = () => {
             textTransform: 'none',
             px: 3,
           }}
+          onClick={handleOpenDialog}
         >
           New Project
         </Button>
       </Box>
+
+      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>Create New Project</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            name="name"
+            label="Project Name"
+            type="text"
+            fullWidth
+            variant="outlined"
+            value={formData.name}
+            onChange={handleInputChange}
+          />
+          <TextField
+            margin="dense"
+            name="description"
+            label="Description"
+            type="text"
+            fullWidth
+            variant="outlined"
+            value={formData.description}
+            onChange={handleInputChange}
+          />
+          <TextField
+            margin="dense"
+            name="startDate"
+            label="Start Date"
+            type="date"
+            fullWidth
+            variant="outlined"
+            InputLabelProps={{ shrink: true }}
+            value={formData.startDate}
+            onChange={handleInputChange}
+          />
+          <TextField
+            margin="dense"
+            name="endDate"
+            label="End Date"
+            type="date"
+            fullWidth
+            variant="outlined"
+            InputLabelProps={{ shrink: true }}
+            value={formData.endDate}
+            onChange={handleInputChange}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit} color="primary">
+            Create
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Grid container spacing={3}>
         {/* Project Overview */}
@@ -91,84 +199,58 @@ const Dashboard = () => {
             Active Projects
           </Typography>
           <Grid container spacing={2}>
-            {projects.slice(0, 3).map((project) => (
-              <Grid item xs={12} md={4} key={project._id}>
-                <Card
+            {projects.map((project) => (
+              <Grid item xs={12} sm={6} md={4} key={project._id}>
+                <Paper
                   sx={{
-                    height: '100%',
+                    p: 2,
                     display: 'flex',
                     flexDirection: 'column',
+                    height: '100%',
                     position: 'relative',
-                    overflow: 'visible',
-                    '&:hover': {
-                      transform: 'translateY(-4px)',
-                      transition: 'transform 0.2s ease-in-out',
-                    },
                   }}
                 >
-                  <CardContent sx={{ flexGrow: 1 }}>
-                    <Box sx={{ mb: 2 }}>
-                      <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
-                        {project.name}
-                      </Typography>
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        sx={{
-                          mb: 2,
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden',
-                        }}
-                      >
-                        {project.description}
-                      </Typography>
-                    </Box>
+                  <Box display="flex" justifyContent="space-between" alignItems="flex-start">
+                    <Typography variant="h6" gutterBottom>
+                      {project.name}
+                    </Typography>
+                    <IconButton
+                      size="small"
+                      onClick={() => console.log('Open project menu')}
+                    >
+                      <MoreVertIcon />
+                    </IconButton>
+                  </Box>
 
-                    <Box sx={{ mb: 2 }}>
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                        Progress
-                      </Typography>
-                      <LinearProgress
-                        variant="determinate"
-                        value={getProjectProgress(project)}
-                        sx={{
-                          height: 6,
-                          borderRadius: 3,
-                          bgcolor: 'rgba(255, 255, 255, 0.08)',
-                          '& .MuiLinearProgress-bar': {
-                            borderRadius: 3,
-                          },
-                        }}
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    {project.description}
+                  </Typography>
+
+                  <Box mt="auto" pt={2}>
+                    <Box display="flex" justifyContent="space-between" alignItems="center">
+                      <Box display="flex" alignItems="center">
+                        <AssignmentIcon fontSize="small" sx={{ mr: 1 }} />
+                        <Typography variant="body2">
+                          {project.tasks.length} tasks
+                        </Typography>
+                      </Box>
+                      <Chip
+                        label={project.status}
+                        color={project.status === 'Active' ? 'success' : 'default'}
+                        size="small"
                       />
                     </Box>
+                  </Box>
 
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <AvatarGroup max={3} sx={{ '& .MuiAvatar-root': { width: 30, height: 30, fontSize: '0.875rem' } }}>
-                        {project.members?.map((member) => (
-                          <Tooltip key={member._id} title={member.name}>
-                            <Avatar alt={member.name}>{member.name.charAt(0)}</Avatar>
-                          </Tooltip>
-                        ))}
-                      </AvatarGroup>
-                      <IconButton
-                        component={RouterLink}
-                        to={`/projects/${project._id}`}
-                        size="small"
-                        sx={{
-                          bgcolor: 'primary.main',
-                          color: 'white',
-                          '&:hover': {
-                            bgcolor: 'primary.dark',
-                          },
-                        }}
-                      >
-                        <ArrowForwardIcon />
-                      </IconButton>
-                    </Box>
-                  </CardContent>
-                </Card>
+                  <Button
+                    variant="outlined"
+                    fullWidth
+                    sx={{ mt: 2 }}
+                    onClick={() => navigate(`/projects/${project._id}`)}
+                  >
+                    View Details
+                  </Button>
+                </Paper>
               </Grid>
             ))}
           </Grid>

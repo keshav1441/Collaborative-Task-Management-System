@@ -100,6 +100,18 @@ exports.getProject = async (req, res) => {
     console.log("Fetching project with ID:", req.params.projectId);
     console.log("User requesting project:", req.user._id);
 
+    // Handle the case when projectId is 'new'
+    if (req.params.projectId === 'new') {
+      return res.json({
+        name: '',
+        description: '',
+        owner: req.user._id,
+        members: [{ user: req.user._id, role: 'Manager' }],
+        tasks: [],
+        status: 'Active'
+      });
+    }
+
     const project = await Project.findById(req.params.projectId)
       .populate("owner", "name email")
       .populate("members.user", "name email")
@@ -147,12 +159,9 @@ exports.getProject = async (req, res) => {
       return res.json(project);
     }
 
-    return res.status(403).json({ 
-      message: "Access denied. You must be a project member or have assigned tasks to view this project." 
-    });
-
+    return res.status(403).json({ message: "Access denied" });
   } catch (error) {
-    console.error('Error fetching project:', error);
+    console.error("Error fetching project:", error);
     res.status(400).json({ message: error.message });
   }
 };

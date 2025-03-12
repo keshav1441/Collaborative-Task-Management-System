@@ -45,7 +45,7 @@ const Register = () => {
 
     setLoading(true)
     try {
-      await register(formData.name.trim(), formData.email.trim(), formData.password)
+      await register(formData)
       navigate('/')
     } catch (err) {
       // Handle mongoose validation errors

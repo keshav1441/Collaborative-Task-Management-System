@@ -52,6 +52,11 @@ exports.createTask = async (req, res) => {
 // Get tasks for a project
 exports.getProjectTasks = async (req, res) => {
   try {
+    // Handle the case when projectId is 'new'
+    if (req.params.projectId === 'new') {
+      return res.json([]); // Return an empty array for new projects
+    }
+
     const project = await Project.findById(req.params.projectId);
     if (!project) {
       return res.status(404).json({ message: "Project not found" });
@@ -188,10 +193,10 @@ exports.updateTask = async (req, res) => {
 
     // Handle status update
     if (req.body.status !== undefined) {
-      if (!["To-Do", "In Progress", "Review", "Done"].includes(req.body.status)) {
+      if (!["To-Do", "In Progress", "Completed"].includes(req.body.status)) {
         return res.status(400).json({
           message: "Invalid status value",
-          allowedValues: ["To-Do", "In Progress", "Review", "Done"],
+          allowedValues: ["To-Do", "In Progress", "Completed"],
         });
       }
       task.status = req.body.status;
