@@ -1,7 +1,7 @@
-import React from 'react'
-import { ThemeProvider, CssBaseline, GlobalStyles } from '@mui/material'
-import { theme } from './theme'
-import AppRoutes from './routes'
+import React from 'react';
+import { ThemeProvider, CssBaseline, GlobalStyles } from '@mui/material';
+import { theme } from './theme';
+import AppRoutes from './routes';
 
 const globalStyles = {
   '*': {
@@ -16,7 +16,7 @@ const globalStyles = {
     width: '100%',
   },
   body: {
-    backgroundColor: '#0A0F1E',
+    backgroundColor: '#ffffff', // Updated to light theme
     height: '100%',
     width: '100%',
   },
@@ -29,16 +29,16 @@ const globalStyles = {
     height: '8px',
   },
   '::-webkit-scrollbar-track': {
-    background: 'rgba(255, 255, 255, 0.05)',
+    background: 'rgba(0, 0, 0, 0.05)', // Adjusted for light theme
   },
   '::-webkit-scrollbar-thumb': {
-    background: 'rgba(255, 255, 255, 0.1)',
+    background: 'rgba(0, 0, 0, 0.1)', // Adjusted for light theme
     borderRadius: '4px',
     '&:hover': {
-      background: 'rgba(255, 255, 255, 0.2)',
+      background: 'rgba(0, 0, 0, 0.2)', // Adjusted for light theme
     },
   },
-}
+};
 
 function App() {
   return (
@@ -47,8 +47,7 @@ function App() {
       <GlobalStyles styles={globalStyles} />
       <AppRoutes />
     </ThemeProvider>
-  )
+  );
 }
 
-export default App
-
+export default App;

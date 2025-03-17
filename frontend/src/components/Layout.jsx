@@ -134,8 +134,10 @@ const Layout = () => {
         sx={{
           width: { md: `calc(100% - ${drawerWidth}px)` },
           ml: { md: `${drawerWidth}px` },
+          backgroundColor: '#ffffff', // Updated background color
         }}
       >
+
         <Toolbar sx={{ justifyContent: 'space-between' }}>
           <IconButton
             color="inherit"
@@ -146,7 +148,8 @@ const Layout = () => {
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" noWrap component="div" sx={{ display: { xs: 'none', sm: 'block' } }}>
+          <Typography variant="h6" noWrap component="div" sx={{ display: { xs: 'none', sm: 'block' }, color: '#000000' }}> 
+
             {menuItems.find((item) => item.path === location.pathname)?.text || 'Dashboard'}
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -247,4 +250,4 @@ const Layout = () => {
   )
 }
 
-export default Layout 
+export default Layout

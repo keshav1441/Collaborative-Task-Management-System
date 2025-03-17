@@ -32,7 +32,6 @@ import {
 } from '@mui/icons-material'
 import axios from 'axios'
 import { useAuth } from '../hooks/useAuth'
-import { fetchProjects } from './ProjectList'
 
 const Dashboard = () => {
   const navigate = useNavigate()
@@ -47,23 +46,22 @@ const Dashboard = () => {
     endDate: '',
   })
 
-  const fetchDashboardData = async () => {
-    try {
-      const [projectsRes, tasksRes] = await Promise.all([
-        axios.get('/api/projects'),
-        axios.get('/api/tasks/assigned'),
-      ])
-      console.log('Projects fetched:', projectsRes.data)
-      console.log('Tasks fetched:', tasksRes.data)
-      setProjects(projectsRes.data)
-      setTasks(tasksRes.data)
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error)
-    }
-  }
-
   useEffect(() => {
-    fetchProjects(setProjects, console.error, () => {})
+    const fetchDashboardData = async () => {
+      try {
+        const [projectsRes, tasksRes] = await Promise.all([
+          axios.get('/api/projects'),
+          axios.get('/api/tasks/user'),
+        ])
+        console.log('Projects fetched:', projectsRes.data)
+        console.log('Tasks fetched:', tasksRes.data)
+        setProjects(projectsRes.data)
+        setTasks(tasksRes.data)
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error)
+      }
+    }
+    fetchDashboardData();
   }, [])
 
   const getStatusColor = (status) => {
@@ -108,7 +106,6 @@ const Dashboard = () => {
     e.preventDefault()
     try {
       await axios.post('/api/projects', formData)
-      fetchDashboardData()
       handleCloseDialog()
     } catch (err) {
       console.error('Failed to create project:', err)

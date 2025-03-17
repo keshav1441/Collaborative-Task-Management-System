@@ -172,11 +172,11 @@ const TaskBoard = ({
   const getColumnColor = (status) => {
     switch (status) {
       case 'To-Do':
-        return 'rgba(51, 49, 49, 0.9)';
+        return '#ffccbc';
       case 'In Progress':
-        return 'rgba(88, 127, 155, 0.9)';
+        return '#ffe0b2';
       case 'Completed':
-        return 'rgba(154, 247, 162, 0.9)';
+        return '#c8e6c9';
       default:
         return 'rgba(240, 240, 240, 0.9)';
     }
