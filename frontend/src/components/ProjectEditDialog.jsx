@@ -25,7 +25,7 @@ import {
   CalendarToday as CalendarIcon,
   Description as DescriptionIcon,
 } from '@mui/icons-material';
-import axiosInstance from '../config/axios';
+import axios from 'axios';
 
 const ProjectEditDialog = ({ open, onClose, project, onProjectUpdated }) => {
   const [formData, setFormData] = useState({
@@ -81,35 +81,24 @@ const ProjectEditDialog = ({ open, onClose, project, onProjectUpdated }) => {
     setError('');
     setSuccess(false);
 
-    // Validate the endDate
-    if (!formData.endDate) {
-      setError('End date is required');
-      setLoading(false);
-      return;
-    }
-
     try {
-      // Format the end date properly
-      const formDataToSubmit = {
-        ...formData,
-        endDate: formData.endDate ? new Date(formData.endDate + 'T00:00:00.000Z').toISOString() : null
-      };
-      
-      console.log('Submitting project data:', formDataToSubmit);
-      
       let response;
       
       if (isNewProject) {
-        response = await axiosInstance.post('/projects', formDataToSubmit);
-        console.log('Created new project:', response.data);
+        // Create new project
+        console.log('Creating new project with data:', formData);
+        response = await axios.post('/api/projects', formData);
+        setSuccess(true);
+        onProjectUpdated(response.data);
       } else {
-        response = await axiosInstance.patch(`/projects/${project._id}`, formDataToSubmit);
-        console.log('Updated project:', response.data);
+        // Update existing project
+        console.log('Updating project with ID:', project._id, 'Data:', formData);
+        response = await axios.patch(`/api/projects/${project._id}`, formData);
+        setSuccess(true);
+        onProjectUpdated(response.data);
       }
       
-      setSuccess(true);
-      onProjectUpdated(response.data);
-      
+      // Close dialog after a short delay to show success message
       setTimeout(() => {
         onClose();
       }, 1000);
