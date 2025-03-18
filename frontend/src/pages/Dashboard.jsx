@@ -32,7 +32,9 @@ import {
   MenuItem,
   Alert,
   Tooltip,
-  Fab
+  Fab,
+  Badge,
+  Stack
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -44,16 +46,16 @@ import {
   Flag as FlagIcon,
   Add as AddIcon,
   Close as CloseIcon,
-  Refresh as RefreshIcon
+  Refresh as RefreshIcon,
+  AccessTime as AccessTimeIcon,
+  CalendarToday as CalendarTodayIcon,
+  Description as DescriptionIcon
 } from '@mui/icons-material';
 import { fetchProjects } from './ProjectList';
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const theme = useTheme();
-  
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
   const [tasks, setTasks] = useState([]);
@@ -64,7 +66,7 @@ const Dashboard = () => {
     pendingTasks: 0,
     activeProjects: 0
   });
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
 
   // New Project Dialog State
   const [openNewProjectDialog, setOpenNewProjectDialog] = useState(false);
@@ -93,8 +95,8 @@ const Dashboard = () => {
   // Calculate dashboard statistics
 const calculateStats = (tasks, projects) => {
     const totalTasks = tasks.length;
-    const completedTasks = tasks.filter(task => task.status === 'completed').length;
-    const pendingTasks = tasks.filter(task => task.status === 'pending').length; // Update to count pending tasks directly
+    const completedTasks = tasks.filter(task => task.status === 'Completed').length;
+    const pendingTasks = totalTasks - completedTasks;
     const activeProjects = projects.length;
 
     return {
@@ -105,18 +107,10 @@ const calculateStats = (tasks, projects) => {
     };
 };
 
-
-
-  // Handle manual refresh
-  const handleRefresh = () => {
-    setRefreshTrigger(prev => prev + 1);
-    setRefreshing(true);
-  };
-
   // Load all dashboard data
   useEffect(() => {
     const loadDashboardData = async () => {
-      if (!refreshing) setLoading(true);
+      // setLoading(true); // Removed loading state
       try {
         // Fetch tasks
         const tasksData = await fetchTasks();
@@ -130,20 +124,14 @@ const calculateStats = (tasks, projects) => {
       } catch (err) {
         console.error('Error loading dashboard data:', err);
       } finally {
-        setLoading(false);
-        setRefreshing(false);
+        // setLoading(false); // Removed loading state
       }
     };
 
     loadDashboardData();
+    
+  }, [fetchTasks, projects]);
 
-    // Set up an interval to refresh data every 30 seconds
-    const refreshInterval = setInterval(() => {
-      setRefreshTrigger(prev => prev + 1);
-    }, 30000);
-
-    return () => clearInterval(refreshInterval);
-  }, [fetchTasks, refreshTrigger, refreshing, projects]);
 
   // Update stats whenever tasks or projects change
   useEffect(() => {
@@ -277,29 +265,29 @@ const updatedStats = calculateStats(tasks, projects); // Ensure stats are update
     });
   };
 
-  // Calculate completion percentage for a project
-  const calculateCompletion = (project) => {
-    if (!project.tasks || project.tasks.length === 0) return 0;
-    const completed = project.tasks.filter(task => task.status === 'completed').length;
-    return Math.round((completed / project.tasks.length) * 100);
+  // Get days remaining until due date
+  const getDaysRemaining = (dueDate) => {
+    if (!dueDate) return null;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const due = new Date(dueDate);
+    due.setHours(0, 0, 0, 0);
+    
+    const diffTime = due - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    return diffDays;
   };
 
-  // if (loading && !refreshing) {
-  //   return (
-  //     <Box sx={{ 
-  //       display: 'flex', 
-  //       flexDirection: 'column',
-  //       justifyContent: 'center', 
-  //       alignItems: 'center', 
-  //       height: '80vh' 
-  //     }}>
-  //       <CircularProgress size={60} thickness={4} />
-  //       <Typography variant="h6" sx={{ mt: 2 }}>
-  //         Loading your dashboard...
-  //       </Typography>
-  //     </Box>
-  //   );
-  // }
+  // Get badge color based on days remaining
+  const getBadgeColor = (daysRemaining) => {
+    if (daysRemaining === null) return 'default';
+    if (daysRemaining < 0) return 'error';
+    if (daysRemaining <= 2) return 'warning';
+    return 'success';
+  };
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
@@ -510,19 +498,20 @@ const updatedStats = calculateStats(tasks, projects); // Ensure stats are update
       </Grid>
 
       <Grid container spacing={3}>
-        {/* Recent Tasks */}
+        {/* Recent Tasks - Enhanced with prettier styling */}
         <Grid item xs={12} md={6}>
           <Card 
             elevation={3} 
             sx={{ 
               height: '100%', 
               borderRadius: 2,
-              overflow: 'hidden'
+              overflow: 'hidden',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
             }}
           >
             <Box 
               sx={{ 
-                bgcolor: theme.palette.primary.main, 
+                background: `linear-gradient(90deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
                 py: 2, 
                 px: 3,
                 display: 'flex',
@@ -532,91 +521,207 @@ const updatedStats = calculateStats(tasks, projects); // Ensure stats are update
             >
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 <AssignmentIcon sx={{ color: 'white', mr: 1 }} />
-                <Typography variant="h6" component="h2" color="white">
+                <Typography variant="h6" component="h2" color="white" fontWeight="bold">
                   My Tasks
                 </Typography>
               </Box>
+              <Chip 
+                label={`${tasks.length} Total`} 
+                size="small"
+                sx={{ 
+                  bgcolor: 'rgba(255,255,255,0.2)', 
+                  color: 'white',
+                  fontWeight: 'medium',
+                  '& .MuiChip-label': { px: 1 }
+                }}
+              />
             </Box>
             <CardContent sx={{ p: 0 }}>
               {tasks.length === 0 ? (
-                <Box sx={{ p: 3, textAlign: 'center' }}>
-                  <Typography variant="body1" color="textSecondary">
+                <Box sx={{ 
+                  p: 4, 
+                  textAlign: 'center',
+                  background: `linear-gradient(135deg, ${alpha(theme.palette.primary.light, 0.05)} 0%, ${alpha(theme.palette.primary.main, 0.1)} 100%)`
+                }}>
+                  <AssignmentIcon sx={{ fontSize: 60, color: alpha(theme.palette.primary.main, 0.3), mb: 2 }} />
+                  <Typography variant="h6" color="textSecondary" gutterBottom>
                     No tasks assigned to you
                   </Typography>
+                  <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+                    When tasks are assigned to you, they will appear here.
+                  </Typography>
+                  <Button 
+                    variant="outlined" 
+                    color="primary"
+                    startIcon={<AddIcon />}
+                    onClick={() => navigate('/tasks/new')}
+                  >
+                    Create a task
+                  </Button>
                 </Box>
               ) : (
                 <List sx={{ p: 0 }}>
-                  {tasks.slice(0, 5).map((task, index) => (
-                    <React.Fragment key={task._id || index}>
-                      <ListItem                   
-                        sx={{ 
-                          px: 3,
-                          py: 2,
-                          transition: 'all 0.2s',
-                          '&:hover': { 
-                            bgcolor: alpha(theme.palette.primary.main, 0.05),
-                            transform: 'translateX(5px)'
-                          }
-                        }}
-                      >
-                        <Box sx={{ display: 'flex', alignItems: 'flex-start', width: '100%' }}>
-                          <Avatar 
-                            sx={{ 
-                              bgcolor: getStatusColor(task.status),
-                              width: 40,
-                              height: 40,
-                              mr: 2
-                            }}
-                          >
-                            {task.title?.charAt(0).toUpperCase() || 'T'}
-                          </Avatar>
-                          <Box sx={{ flexGrow: 1 }}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                              <Typography variant="subtitle1" fontWeight="medium">
-                                {task.title}
-                              </Typography>
-                              <Chip 
-                                size="small" 
-                                label={task.priority?.toUpperCase() || 'MEDIUM'} 
-                                sx={{ 
-                                  bgcolor: alpha(getPriorityColor(task.priority), 0.1),
-                                  color: getPriorityColor(task.priority),
-                                  fontWeight: 'bold',
-                                  fontSize: '0.7rem'
-                                }}
-                                icon={<FlagIcon style={{ fontSize: '0.9rem' }} />}
-                              />
+                  {tasks.slice(0, 5).map((task, index) => {
+                    const daysRemaining = getDaysRemaining(task.dueDate);
+                    const badgeColor = getBadgeColor(daysRemaining);
+                    
+                    return (
+                      <React.Fragment key={task._id || index}>
+                        <ListItem                   
+                          sx={{ 
+                            px: 3,
+                            py: 2.5,
+                            transition: 'all 0.2s',
+                            background: index % 2 === 0 ? alpha(theme.palette.primary.main, 0.03) : 'transparent',
+                            '&:hover': { 
+                              bgcolor: alpha(theme.palette.primary.main, 0.08),
+                              transform: 'translateX(5px)'
+                            },
+                            borderLeft: task.status === 'completed' 
+                              ? `4px solid ${theme.palette.success.main}` 
+                              : `4px solid ${theme.palette.primary.main}`
+                          }}
+                        >
+                          <Box sx={{ display: 'flex', width: '100%' }}>
+                            {/* Left side with avatar */}
+                            <Box sx={{ mr: 2 }}>
+                              <Badge
+                                overlap="circular"
+                                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                                badgeContent={
+                                  <Box
+                                    sx={{
+                                      width: 12,
+                                      height: 12,
+                                      borderRadius: '50%',
+                                      bgcolor: getStatusColor(task.status),
+                                      border: '2px solid white'
+                                    }}
+                                  />
+                                }
+                              >
+                                <Avatar 
+                                  sx={{ 
+                                    width: 48,
+                                    height: 48,
+                                    background: `linear-gradient(135deg, ${alpha(theme.palette.primary.light, 0.8)} 0%, ${theme.palette.primary.main} 100%)`,
+                                    boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
+                                  }}
+                                >
+                                  {task.title?.charAt(0).toUpperCase() || 'T'}
+                                </Avatar>
+                              </Badge>
                             </Box>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
-                              <Chip 
-                                size="small" 
-                                label={task.status?.replace('_', ' ').toUpperCase() || 'PENDING'} 
-                                sx={{ 
-                                  bgcolor: alpha(getStatusColor(task.status), 0.1),
-                                  color: getStatusColor(task.status),
-                                  fontWeight: 'medium',
-                                  fontSize: '0.7rem'
-                                }}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const newStatus = task.status === 'completed' ? 'pending' : 'completed';
-                                  handleUpdateTaskStatus(task._id, newStatus);
-                                }}
-                              />
-                              {task.dueDate && (
-                                <Typography variant="caption" color="text.secondary">
-                                  Due: {formatDate(task.dueDate)}
+                            
+                            {/* Right side with content */}
+                            <Box sx={{ flexGrow: 1 }}>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 0.5 }}>
+                                  {task.title}
                                 </Typography>
+                                <Chip 
+                                  size="small" 
+                                  label={task.priority?.toUpperCase() || 'MEDIUM'} 
+                                  sx={{ 
+                                    bgcolor: alpha(getPriorityColor(task.priority), 0.1),
+                                    color: getPriorityColor(task.priority),
+                                    fontWeight: 'bold',
+                                    fontSize: '0.7rem',
+                                    borderRadius: '4px',
+                                    height: 22
+                                  }}
+                                  icon={<FlagIcon style={{ fontSize: '0.9rem' }} />}
+                                />
+                              </Box>
+                              
+                              {task.description && (
+                                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                  <DescriptionIcon sx={{ fontSize: 14, color: 'text.secondary', mr: 0.5 }} />
+                                  <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: '90%' }}>
+                                    {task.description}
+                                  </Typography>
+                                </Box>
                               )}
+                              
+                              <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
+                                <Chip 
+                                  size="small" 
+                                  label={task.status?.replace('_', ' ').toUpperCase() || 'PENDING'} 
+                                  sx={{ 
+                                    bgcolor: alpha(getStatusColor(task.status), 0.1),
+                                    color: getStatusColor(task.status),
+                                    fontWeight: 'medium',
+                                    fontSize: '0.7rem',
+                                    height: 24,
+                                    borderRadius: '4px'
+                                  }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const newStatus = task.status === 'completed' ? 'pending' : 'completed';
+                                    handleUpdateTaskStatus(task._id, newStatus);
+                                  }}
+                                />
+                                
+                                {task.dueDate && (
+                                  <Tooltip title={daysRemaining < 0 ? 'Overdue' : daysRemaining === 0 ? 'Due today' : `${daysRemaining} days remaining`}>
+                                    <Chip
+                                      size="small"
+                                      icon={<CalendarTodayIcon style={{ fontSize: '0.9rem' }} />}
+                                      label={formatDate(task.dueDate)}
+                                      color={badgeColor}
+                                      variant="outlined"
+                                      sx={{ 
+                                        height: 24,
+                                        fontSize: '0.7rem',
+                                        fontWeight: 'medium',
+                                        borderRadius: '4px'
+                                      }}
+                                    />
+                                  </Tooltip>
+                                )}
+                                
+                                {task.project && (
+                                  <Chip
+                                    size="small"
+                                    icon={<FolderIcon style={{ fontSize: '0.9rem' }} />}
+                                    label={task.project.name || 'Project'}
+                                    sx={{ 
+                                      bgcolor: alpha(theme.palette.info.main, 0.1),
+                                      color: theme.palette.info.main,
+                                      height: 24,
+                                      fontSize: '0.7rem',
+                                      fontWeight: 'medium',
+                                      borderRadius: '4px'
+                                    }}
+                                  />
+                                )}
+                              </Stack>
                             </Box>
                           </Box>
-                        </Box>
-                      </ListItem>
-                      {index < Math.min(tasks.length, 5) - 1 && (
-                        <Divider />
-                      )}
-                    </React.Fragment>
-                  ))}
+                        </ListItem>
+                        {index < Math.min(tasks.length, 5) - 1 && (
+                          <Divider sx={{ opacity: 0.6 }} />
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                  
+                  {tasks.length > 5 && (
+                    <Box sx={{ 
+                      p: 2, 
+                      textAlign: 'center',
+                      background: alpha(theme.palette.primary.main, 0.03)
+                    }}>
+                      <Button 
+                        variant="text" 
+                        color="primary"
+                        endIcon={<ArrowForwardIcon />}
+                        onClick={() => navigate('/tasks')}
+                      >
+                        View All Tasks
+                      </Button>
+                    </Box>
+                  )}
                 </List>
               )}
             </CardContent>
@@ -716,22 +821,6 @@ const updatedStats = calculateStats(tasks, projects); // Ensure stats are update
                               {project.description?.substring(0, 60)}
                               {project.description?.length > 60 ? '...' : ''}
                             </Typography>
-                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                              <Box sx={{ flexGrow: 1, mr: 2 }}>
-                                <LinearProgress 
-                                  variant="determinate" 
-                                  value={calculateCompletion(project)} 
-                                  sx={{ 
-                                    height: 8, 
-                                    borderRadius: 4,
-                                    bgcolor: alpha(theme.palette.info.main, 0.1)
-                                  }}
-                                />
-                              </Box>
-                              <Typography variant="caption" fontWeight="bold">
-                                {calculateCompletion(project)}%
-                              </Typography>
-                            </Box>
                           </Box>
                         </Box>
                       </ListItem>
@@ -812,24 +901,6 @@ const updatedStats = calculateStats(tasks, projects); // Ensure stats are update
           </DialogActions>
         </form>
       </Dialog>
-
-      {/* Refresh FAB */}
-      <Tooltip title="Refresh Dashboard">
-        <Fab 
-          color="primary" 
-          aria-label="refresh" 
-          onClick={handleRefresh}
-          sx={{ 
-            position: 'fixed', 
-            bottom: 20, 
-            right: 20,
-            opacity: refreshing ? 0.7 : 1
-          }}
-          disabled={refreshing}
-        >
-          <RefreshIcon sx={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />
-        </Fab>
-      </Tooltip>
     </Container>
   );
 };

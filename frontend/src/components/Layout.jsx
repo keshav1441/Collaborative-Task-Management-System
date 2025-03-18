@@ -127,14 +127,13 @@ const Layout = () => {
   )
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
-      <CssBaseline />
+    <Box sx={{ display: 'flex', minHeight: '100vh'}}>
       <AppBar
         position="fixed"
         sx={{
           width: { md: `calc(100% - ${drawerWidth}px)` },
           ml: { md: `${drawerWidth}px` },
-          backgroundColor: '#ffffff', // Updated background color
+          backgroundColor: '#ffffff', 
         }}
       >
 
@@ -149,8 +148,6 @@ const Layout = () => {
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" noWrap component="div" sx={{ display: { xs: 'none', sm: 'block' }, color: '#000000' }}> 
-
-            {menuItems.find((item) => item.path === location.pathname)?.text || 'Dashboard'}
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Tooltip title="Account settings">
