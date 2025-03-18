@@ -77,7 +77,7 @@ const Layout = () => {
           borderColor: 'divider',
         }}
       >
-        <Typography variant="h6" sx={{ fontWeight: 700, color: 'primary.main' }}>
+        <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main' }}>
           PlanIt
         </Typography>
         {isMobile && (
