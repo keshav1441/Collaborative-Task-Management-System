@@ -1,4 +1,4 @@
-# Collaborative Task Management System
+# PlanIt - Collaborative Task Management System
 
 A full-stack application for managing tasks and projects collaboratively.
 
